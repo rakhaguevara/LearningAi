@@ -6,7 +6,7 @@ import { FloatingIllustration } from "@/components/ui/FloatingIllustration";
 
 const steps = [
   {
-    number: "01",
+    number: "011",
     title: "Share Your Learning Style",
     description:
       "Tell us how you prefer to learn — visual animations, podcasts, storytelling, or concise summaries. The more we understand your preferences, the more personalized your learning experience becomes.",
