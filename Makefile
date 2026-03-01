@@ -50,16 +50,16 @@ lint-frontend: ## Lint frontend
 
 # ─── Docker ──────────────────────────────────────────────
 docker-up: ## Start all Docker services
-	docker-compose up -d --build
+	docker compose up -d --build
 
 docker-down: ## Stop all Docker services
-	docker-compose down
+	docker compose down
 
 docker-infra: ## Start only infrastructure (postgres, redis)
-	docker-compose up -d postgres redis
+	docker compose up -d postgres redis
 
 docker-logs: ## Tail Docker logs
-	docker-compose logs -f
+	docker compose logs -f
 
 # ─── Database ────────────────────────────────────────────
 migrate-up: ## Run database migrations
