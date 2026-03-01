@@ -7,30 +7,30 @@ import { FloatingIllustration } from "@/components/ui/FloatingIllustration";
 const steps = [
   {
     number: "01",
-    title: "Share Your Interests",
+    title: "Share Your Learning Style",
     description:
-      "Sign up and tell us what you're passionate about — anime, gaming, hip-hop, football, cooking, anything. The more we know, the better we teach.",
+      "Tell us how you prefer to learn — visual animations, podcasts, storytelling, or concise summaries. The more we understand your preferences, the more personalized your learning experience becomes.",
     color: "from-brand-400 to-brand-600",
   },
   {
     number: "02",
-    title: "Pick a Topic to Learn",
+    title: "Upload Your Material",
     description:
-      "Choose any subject from our library or type in your own question. From organic chemistry to macroeconomics, no topic is off limits.",
+      "Upload any PDF, PPT, or article you want to study. Our system will analyze the structure, key concepts, and relationships within the content to prepare it for transformation.",
     color: "from-accent-cyan to-brand-400",
   },
   {
     number: "03",
-    title: "AI Crafts Your Lesson",
+    title: "Choose Your Learning Mode",
     description:
-      "Qwen AI analyzes your interests and builds a custom explanation with analogies, visuals, and examples drawn from the things you love most.",
+      "Select how you want the material to be delivered — animated video, audio explanation, interactive summary, or story-based learning. You control the format and depth.",
     color: "from-accent-pink to-brand-400",
   },
   {
     number: "04",
-    title: "Learn, Interact, Grow",
+    title: "Transform & Learn",
     description:
-      "Ask follow-up questions, request illustrations, dive deeper. The AI adapts continuously — every interaction sharpens your personalized learning path.",
+      "The system converts your material into your chosen format, adapting explanations to match your preferences and desired level of detail.",
     color: "from-accent-amber to-accent-pink",
   },
 ];
