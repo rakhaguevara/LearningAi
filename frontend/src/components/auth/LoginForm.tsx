@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import GoogleLoginButton from './GoogleLoginButton';
+import { siteConfig } from '@/lib/constants';
 
 interface LoginFormProps {
     onSuccess: () => void;
@@ -19,10 +20,10 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
         setError('');
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-            const res = await fetch(`${apiUrl}/auth/login`, {
+            const res = await fetch(`${siteConfig.api}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ email, password }),
             });
 
@@ -30,13 +31,11 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
 
             if (!res.ok) {
                 const errMsg =
-                    typeof data?.error === 'string'
-                        ? data.error
-                        : typeof data?.message === 'string'
-                            ? data.message
-                            : typeof data?.error?.message === 'string'
-                                ? data.error.message
-                                : 'Login failed. Please check your credentials.';
+                    data?.error?.detail
+                    || data?.error?.message
+                    || (typeof data?.error === 'string' ? data.error : null)
+                    || data?.message
+                    || 'Login failed. Please check your credentials.';
                 throw new Error(errMsg);
             }
 
@@ -44,7 +43,11 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
             // Optionally redirect to dashboard
             window.location.href = '/dashboard';
         } catch (err: any) {
-            setError(err?.message || 'Something went wrong. Please try again.');
+            if (err instanceof TypeError && err.message === 'Failed to fetch') {
+                setError('Cannot connect to server. Please check if the backend is running.');
+            } else {
+                setError(err?.message || 'Something went wrong. Please try again.');
+            }
         } finally {
             setIsLoading(false);
         }
