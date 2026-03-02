@@ -1,4 +1,10 @@
-.PHONY: help dev dev-backend dev-frontend build test lint clean docker-up docker-down migrate
+SHELL := /bin/bash
+export PATH := /opt/homebrew/bin:/usr/local/go/bin:/usr/local/bin:$(PATH)
+
+.PHONY: help dev dev-backend dev-frontend build build-backend build-frontend \
+        test test-backend test-frontend lint lint-backend lint-frontend \
+        docker-up docker-down docker-infra docker-logs \
+        migrate-up migrate-down clean
 
 # ─── Variables ───────────────────────────────────────────
 BACKEND_DIR  := backend
@@ -10,12 +16,13 @@ help: ## Show this help
 		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # ─── Development ─────────────────────────────────────────
-dev: ## Run backend + frontend concurrently
-	@echo "Starting all services..."
-	$(MAKE) docker-infra
-	$(MAKE) -j2 dev-backend dev-frontend
+dev: ## Start infra + run backend & frontend concurrently
+	@echo "🚀 Starting infrastructure (postgres + redis)..."
+	@$(MAKE) docker-infra
+	@echo "✅ Infrastructure ready. Starting backend & frontend..."
+	@$(MAKE) -j2 dev-backend dev-frontend
 
-dev-backend: ## Run backend in dev mode
+dev-backend: ## Run backend in dev mode (hot reload)
 	cd $(BACKEND_DIR) && go run ./cmd/server
 
 dev-frontend: ## Run frontend in dev mode
@@ -49,7 +56,7 @@ lint-frontend: ## Lint frontend
 	cd $(FRONTEND_DIR) && npm run lint
 
 # ─── Docker ──────────────────────────────────────────────
-docker-up: ## Start all Docker services
+docker-up: ## Start all Docker services (full stack)
 	docker compose up -d --build
 
 docker-down: ## Stop all Docker services
@@ -57,6 +64,8 @@ docker-down: ## Stop all Docker services
 
 docker-infra: ## Start only infrastructure (postgres, redis)
 	docker compose up -d postgres redis
+	@echo "⏳ Waiting for postgres & redis to be healthy..."
+	@docker compose exec postgres pg_isready -U ailearndb -q || sleep 3
 
 docker-logs: ## Tail Docker logs
 	docker compose logs -f
