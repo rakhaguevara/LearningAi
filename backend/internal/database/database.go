@@ -46,6 +46,7 @@ func Connect(cfg config.DBConfig, log *zap.Logger) (*sql.DB, error) {
 func RunMigrations(db *sql.DB, log *zap.Logger) error {
 	migrations := []string{
 		createUsersTable,
+		migrateUsersTableAddPasswordHash,
 		createLearningProfilesTable,
 		createInterestTagsTable,
 		createLearningSessionsTable,
@@ -70,7 +71,8 @@ CREATE TABLE IF NOT EXISTS users (
     email         VARCHAR(255) UNIQUE NOT NULL,
     name          VARCHAR(255) NOT NULL,
     avatar_url    TEXT DEFAULT '',
-    google_id     VARCHAR(255) UNIQUE NOT NULL,
+    google_id     VARCHAR(255) UNIQUE,
+    password_hash VARCHAR(255),
     role          VARCHAR(50) DEFAULT 'learner',
     last_login_at TIMESTAMPTZ,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -174,4 +176,27 @@ CREATE TABLE IF NOT EXISTS learning_style_profiles (
     UNIQUE(user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_learning_style_user ON learning_style_profiles(user_id);
+`
+
+// migrateUsersTableAddPasswordHash adds password_hash column and makes google_id nullable
+// for existing tables that were created before email/password auth was implemented.
+const migrateUsersTableAddPasswordHash = `
+DO $$
+BEGIN
+    -- Add password_hash column if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'password_hash'
+    ) THEN
+        ALTER TABLE users ADD COLUMN password_hash VARCHAR(255);
+    END IF;
+
+    -- Make google_id nullable if it's currently NOT NULL
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'google_id' AND is_nullable = 'NO'
+    ) THEN
+        ALTER TABLE users ALTER COLUMN google_id DROP NOT NULL;
+    END IF;
+END $$;
 `

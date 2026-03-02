@@ -1,6 +1,8 @@
 # Binaries
 bin/
 *.exe
+backend/server
+backend/tmp/
 
 # Environment
 .env
@@ -26,3 +28,6 @@ dist/
 
 # Docker
 *.log
+
+# Debug output files
+1

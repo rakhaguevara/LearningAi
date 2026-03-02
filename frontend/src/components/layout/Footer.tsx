@@ -58,7 +58,7 @@ export function Footer() {
             &copy; {currentYear} {siteConfig.name}. All rights reserved.
           </p>
           <p className="text-sm text-brand-200/50">
-            Powered by Alibaba Cloud &amp; Qwen AI
+            Powered by Guevara &amp; Qwen AI
           </p>
         </div>
       </div>

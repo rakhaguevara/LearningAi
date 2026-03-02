@@ -1,0 +1,116 @@
+# ══════════════════════════════════════════════════════════
+#  docker-compose.dev.yml — Full Development Stack
+#  Usage: docker compose -f docker-compose.dev.yml up --build
+#  Requirements: Docker Desktop only (no Go, Node, Postgres needed)
+# ══════════════════════════════════════════════════════════
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: ailearn-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-ailearndb}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ailearndb_secret}
+      POSTGRES_DB: ${DB_NAME:-ailearn}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-ailearndb}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ───────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ailearn-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend API (dev with hot-reload) ───────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: ailearn-backend-dev
+    restart: unless-stopped
+    environment:
+      # App
+      APP_ENV: development
+      APP_PORT: "8080"
+      APP_SECRET: ${APP_SECRET:-dev-secret-change-me}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      # Database (uses Docker service name)
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER:-ailearndb}
+      DB_PASSWORD: ${DB_PASSWORD:-ailearndb_secret}
+      DB_NAME: ${DB_NAME:-ailearn}
+      DB_SSLMODE: disable
+      # Redis (uses Docker service name)
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me}
+      JWT_EXPIRY: ${JWT_EXPIRY:-24h}
+      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-168h}
+      # Google OAuth
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL:-http://localhost:8080/auth/google/callback}
+      # Qwen AI
+      QWEN_API_KEY: ${QWEN_API_KEY:-}
+      QWEN_API_ENDPOINT: ${QWEN_API_ENDPOINT:-https://dashscope.aliyuncs.com/api/v1}
+      QWEN_MODEL: ${QWEN_MODEL:-qwen-max}
+      # Rate Limit
+      RATE_LIMIT_RPS: ${RATE_LIMIT_RPS:-10}
+      RATE_LIMIT_BURST: ${RATE_LIMIT_BURST:-20}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - ./backend:/app
+      - go_modules:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Frontend (dev with hot-reload) ──────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: ailearn-frontend-dev
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  go_modules:
+  go_build_cache:

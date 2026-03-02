@@ -29,3 +29,35 @@ func (h *Handler) GoogleAuth(c *gin.Context) {
 
 	response.OK(c, result)
 }
+
+func (h *Handler) Register(c *gin.Context) {
+	var req RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Err(c, err)
+		return
+	}
+
+	result, err := h.service.Register(req)
+	if err != nil {
+		response.Err(c, err)
+		return
+	}
+
+	response.OK(c, result)
+}
+
+func (h *Handler) Login(c *gin.Context) {
+	var req LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Err(c, err)
+		return
+	}
+
+	result, err := h.service.Login(req)
+	if err != nil {
+		response.Err(c, err)
+		return
+	}
+
+	response.OK(c, result)
+}

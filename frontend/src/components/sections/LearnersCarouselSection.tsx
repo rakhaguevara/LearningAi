@@ -97,6 +97,11 @@ export function LearnersCarouselSection() {
 
   return (
     <section className="relative py-16 md:py-24 overflow-hidden">
+<<<<<<< HEAD
+=======
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 via-transparent to-slate-900/50 pointer-events-none" />
+>>>>>>> b0df5b7113a5b69f8fed22603b16d2d21641818d
 
       <div className="relative max-w-7xl mx-auto px-6">
         {/* Header */}
@@ -200,11 +205,18 @@ export function LearnersCarouselSection() {
             <button
               key={index}
               onClick={() => goToSlide(index)}
+<<<<<<< HEAD
               className={`w-2 h-2 rounded-full transition-all duration-300 ${
                 index === activeIndex
                   ? "bg-accent-cyan w-6"
                   : "bg-white/20 hover:bg-white/40"
               }`}
+=======
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${index === activeIndex
+                ? "bg-accent-cyan w-6"
+                : "bg-white/20 hover:bg-white/40"
+                }`}
+>>>>>>> b0df5b7113a5b69f8fed22603b16d2d21641818d
               aria-label={`Go to slide ${index + 1}`}
             />
           ))}

@@ -45,7 +45,7 @@ func Setup(router *gin.Engine, db *sql.DB, cfg *config.Config, log *zap.Logger) 
 	rateLimiter := mw.NewRateLimiter(cfg.RateLimit.RPS, cfg.RateLimit.Burst)
 
 	// ── Middleware ───────────────────────────────────────
-	router.Use(mw.CORS())
+	router.Use(mw.CORS(cfg.App.FrontendURL))
 	router.Use(mw.RequestLogger(log))
 	router.Use(mw.Recovery(log))
 	router.Use(rateLimiter.Middleware())
@@ -59,6 +59,8 @@ func Setup(router *gin.Engine, db *sql.DB, cfg *config.Config, log *zap.Logger) 
 	authGroup := router.Group("/auth")
 	{
 		authGroup.POST("/google", authHandler.GoogleAuth)
+		authGroup.POST("/register", authHandler.Register)
+		authGroup.POST("/login", authHandler.Login)
 	}
 
 	// ── Protected Routes ────────────────────────────────

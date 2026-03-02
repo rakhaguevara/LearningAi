@@ -29,16 +29,27 @@ export function Navbar() {
       className={cn(
         "fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ease-in-out",
         scrolled
+<<<<<<< HEAD
           ? "px-4 md:px-6 lg:px-8 xl:px-12 pt-4"
+=======
+          ? "px-4 md:px-6 lg:px-8 pt-4"
+>>>>>>> b0df5b7113a5b69f8fed22603b16d2d21641818d
           : "px-0 pt-0"
       )}
     >
       <div
         className={cn(
+<<<<<<< HEAD
           "w-full transition-all duration-300 ease-in-out",
           scrolled
             ? "px-6 lg:px-8 xl:px-12 rounded-2xl shadow-md backdrop-blur-lg bg-slate-900/40 border border-white/10"
             : "px-6 lg:px-8 xl:px-12 glass-strong"
+=======
+          "mx-auto max-w-7xl transition-all duration-300 ease-in-out",
+          scrolled
+            ? "px-6 lg:px-8 rounded-2xl shadow-md backdrop-blur-lg bg-slate-900/40 border border-white/10"
+            : "px-6 lg:px-8 glass-strong"
+>>>>>>> b0df5b7113a5b69f8fed22603b16d2d21641818d
         )}
       >
         <div className="flex h-16 items-center justify-between">
