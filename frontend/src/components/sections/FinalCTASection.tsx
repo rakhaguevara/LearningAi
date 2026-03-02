@@ -62,7 +62,7 @@ export function FinalCTASection() {
   return (
     <section
       ref={sectionRef}
-      className="relative py-24 md:py-32 lg:py-40 overflow-hidden"
+      className="relative py-16 md:py-20 lg:py-24 overflow-hidden"
     >
       {/* Large 3D Background Icon - Appears Early */}
       <motion.div

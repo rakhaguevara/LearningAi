@@ -33,7 +33,7 @@ export function DemoSection() {
   const [active, setActive] = useState(0);
 
   return (
-    <SectionWrapper id="demo">
+    <SectionWrapper id="demo" className="!py-16 lg:!py-20">
       <div className="text-center mb-16">
         <motion.p
           initial={{ opacity: 0 }}
