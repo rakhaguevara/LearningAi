@@ -6,7 +6,7 @@ import { FloatingIllustration } from "@/components/ui/FloatingIllustration";
 
 const steps = [
   {
-    number: "011",
+    number: "01",
     title: "Share Your Learning Style",
     description:
       "Tell us how you prefer to learn — visual animations, podcasts, storytelling, or concise summaries. The more we understand your preferences, the more personalized your learning experience becomes.",
@@ -32,6 +32,13 @@ const steps = [
     description:
       "The system converts your material into your chosen format, adapting explanations to match your preferences and desired level of detail.",
     color: "from-accent-amber to-accent-pink",
+  },
+  {
+    number: "05",
+    title: "Interact & Reinforce",
+    description:
+      "Ask questions, revisit sections, or test your understanding with quick quizzes. Learning becomes dynamic, not static.",
+    color: "from-brand-500 to-accent-cyan",
   },
 ];
 
@@ -71,13 +78,31 @@ export function HowItWorksSection() {
           transition={{ delay: 0.2 }}
           className="mt-4 text-brand-200/70 max-w-2xl mx-auto text-lg"
         >
-          Four steps to a learning experience that finally feels natural.
+          Five steps to a learning experience that finally feels natural.
         </motion.p>
       </div>
 
-      <div className="relative">
-        {/* Connector Line */}
-        <div className="absolute left-8 md:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-brand-500/50 via-accent-cyan/50 to-accent-pink/50 hidden md:block" />
+      {/* Fixed width container for desktop */}
+      <div className="relative max-w-6xl mx-auto">
+        {/* Connector Line - Centered with absolute positioning */}
+        <div
+          className="absolute left-8 md:left-1/2 w-px bg-gradient-to-b from-brand-500/50 via-accent-cyan/50 to-accent-pink/50 hidden md:block -translate-x-1/2"
+          style={{
+            top: 0,
+            bottom: 0,
+            height: "100%",
+          }}
+        />
+
+        {/* Mobile vertical line */}
+        <div
+          className="absolute left-8 w-px bg-gradient-to-b from-brand-500/50 via-accent-cyan/50 to-accent-pink/50 md:hidden"
+          style={{
+            top: 0,
+            bottom: 0,
+            height: "100%",
+          }}
+        />
 
         <div className="space-y-12 md:space-y-24">
           {steps.map((step, i) => (
@@ -87,15 +112,21 @@ export function HowItWorksSection() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className={`relative flex flex-col md:flex-row items-center gap-8 ${
+              className={`relative flex flex-col md:flex-row items-center ${
                 i % 2 === 1 ? "md:flex-row-reverse" : ""
               }`}
             >
-              {/* Content */}
-              <div className="flex-1 md:text-right">
+              {/* Left Content - Equal width with adjusted padding */}
+              <div
+                className={`w-full md:w-1/2 pl-16 md:pl-0 ${
+                  i % 2 === 0
+                    ? "md:pr-16 md:text-right"
+                    : "md:pl-16 md:text-left"
+                }`}
+              >
                 <div
-                  className={`inline-block ${
-                    i % 2 === 1 ? "md:text-left" : "md:text-right"
+                  className={`inline-flex flex-col space-y-3 ${
+                    i % 2 === 0 ? "md:items-end" : "md:items-start"
                   }`}
                 >
                   <span
@@ -103,27 +134,31 @@ export function HowItWorksSection() {
                   >
                     {step.number}
                   </span>
-                  <h3 className="text-2xl font-bold text-white mt-2">
+                  <h3 className="text-2xl font-bold text-white">
                     {step.title}
                   </h3>
-                  <p className="mt-3 text-brand-200/70 max-w-md leading-relaxed">
+                  <p className="text-brand-200/70 max-w-md leading-relaxed">
                     {step.description}
                   </p>
                 </div>
               </div>
 
-              {/* Center Dot */}
-              <div className="relative z-10 hidden md:flex items-center justify-center">
+              {/* Center Dot - Absolutely centered */}
+              <div className="absolute left-8 md:left-1/2 md:-translate-x-1/2 z-10 flex items-center justify-center">
                 <div
-                  className={`w-4 h-4 rounded-full bg-gradient-to-r ${step.color}`}
+                  className={`w-3 h-3 md:w-4 md:h-4 rounded-full bg-gradient-to-r ${step.color}`}
                 />
                 <div
-                  className={`absolute w-8 h-8 rounded-full bg-gradient-to-r ${step.color} opacity-20 animate-pulse-glow`}
+                  className={`absolute w-6 h-6 md:w-8 md:h-8 rounded-full bg-gradient-to-r ${step.color} opacity-20 animate-pulse-glow`}
                 />
               </div>
 
-              {/* Spacer for layout */}
-              <div className="flex-1 hidden md:block" />
+              {/* Right Content - Equal width, no padding modification */}
+              <div
+                className={`hidden md:block w-1/2 ${
+                  i % 2 === 1 ? "md:pr-16" : "md:pl-16"
+                }`}
+              />
             </motion.div>
           ))}
         </div>
