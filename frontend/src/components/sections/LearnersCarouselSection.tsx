@@ -97,8 +97,6 @@ export function LearnersCarouselSection() {
 
   return (
     <section className="relative py-16 md:py-24 overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 via-transparent to-slate-900/50 pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto px-6">
         {/* Header */}
