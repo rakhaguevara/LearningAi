@@ -119,7 +119,7 @@ export function HeroSection() {
             ))}
           </div>
           <p className="text-sm text-brand-200/60">
-            Joined by <span className="text-white font-medium">12,000+</span>{" "}
+            Used by <span className="text-white font-medium">12,000+</span>{" "}
             learners worldwide
           </p>
         </motion.div>
