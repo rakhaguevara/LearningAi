@@ -97,7 +97,7 @@ export function FeaturesSection() {
           viewport={{ once: true }}
           className="text-accent-cyan text-sm font-semibold uppercase tracking-widest mb-4"
         >
-          Why NeuraLearn?
+          Why NeuraLearn
         </motion.p>
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
@@ -107,7 +107,7 @@ export function FeaturesSection() {
           className="text-4xl md:text-5xl font-bold"
         >
           Learning That{" "}
-          <span className="text-gradient">Feels Like You</span>
+          <span className="text-gradient">Make You Enjoy</span>
         </motion.h2>
         <motion.p
           initial={{ opacity: 0, y: 20 }}

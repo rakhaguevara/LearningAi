@@ -68,7 +68,7 @@ export function HowItWorksSection() {
           transition={{ delay: 0.1 }}
           className="text-4xl md:text-5xl font-bold"
         >
-          From Curious to{" "}
+          From Confused to{" "}
           <span className="text-gradient">Confident</span>
         </motion.h2>
         <motion.p
