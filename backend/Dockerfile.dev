@@ -1,10 +1,7 @@
-# ── Go Dev with Air hot-reload ─────────────────────────
+# ── Go Dev ─────────────────────────────────────────────
 FROM golang:1.22-alpine
 
 RUN apk add --no-cache git ca-certificates
-
-# Install Air for hot-reload (pin to v1.52.3 which supports Go 1.22)
-RUN go install github.com/cosmtrek/air@v1.52.3
 
 WORKDIR /app
 
@@ -12,8 +9,9 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Source code will be mounted via volume
+# Copy source code
+COPY . .
+
 EXPOSE 8080
 
-CMD ["air", "-c", ".air.toml"]
-
+CMD ["go", "run", "./cmd/server"]
