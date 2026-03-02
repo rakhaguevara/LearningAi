@@ -3,8 +3,8 @@ FROM golang:1.22-alpine
 
 RUN apk add --no-cache git ca-certificates
 
-# Install Air for hot-reload
-RUN go install github.com/air-verse/air@latest
+# Install Air for hot-reload (pin to v1.52.3 which supports Go 1.22)
+RUN go install github.com/cosmtrek/air@v1.52.3
 
 WORKDIR /app
 
@@ -16,3 +16,4 @@ RUN go mod download
 EXPOSE 8080
 
 CMD ["air", "-c", ".air.toml"]
+
