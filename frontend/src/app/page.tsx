@@ -3,6 +3,7 @@ import { Footer } from "@/components/layout/Footer";
 import { HeroSection } from "@/components/sections/HeroSection";
 import { FeaturesSection } from "@/components/sections/FeaturesSection";
 import { HowItWorksSection } from "@/components/sections/HowItWorksSection";
+import { LearningFormatsSection } from "@/components/sections/LearningFormatsSection";
 import { DemoSection } from "@/components/sections/DemoSection";
 import { CTASection } from "@/components/sections/CTASection";
 
@@ -14,6 +15,7 @@ export default function Home() {
         <HeroSection />
         <FeaturesSection />
         <HowItWorksSection />
+        <LearningFormatsSection />
         <DemoSection />
         <CTASection />
       </main>
