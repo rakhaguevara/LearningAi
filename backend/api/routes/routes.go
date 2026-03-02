@@ -59,6 +59,8 @@ func Setup(router *gin.Engine, db *sql.DB, cfg *config.Config, log *zap.Logger) 
 	authGroup := router.Group("/auth")
 	{
 		authGroup.POST("/google", authHandler.GoogleAuth)
+		authGroup.POST("/register", authHandler.Register)
+		authGroup.POST("/login", authHandler.Login)
 	}
 
 	// ── Protected Routes ────────────────────────────────
