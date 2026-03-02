@@ -4,25 +4,29 @@
 # ============================================
 # Usage: .\dev.ps1
 # This script replaces 'make dev' for Windows users.
+# Requirements: Docker Desktop
 
-Write-Host "🚀 Starting infrastructure (postgres + redis)..." -ForegroundColor Cyan
-docker compose up -d postgres redis
+$ErrorActionPreference = "Stop"
 
-Write-Host "⏳ Waiting for services to be healthy..." -ForegroundColor Yellow
-Start-Sleep -Seconds 5
+# Navigate to project root (where this script lives)
+$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+Set-Location $ProjectRoot
 
-Write-Host "✅ Infrastructure ready. Starting backend & frontend..." -ForegroundColor Green
-
-# Start backend in a new terminal window
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; go run ./cmd/server"
-
-# Start frontend in a new terminal window
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd frontend; npm run dev"
+# Create .env from example if it doesn't exist
+if (-not (Test-Path ".env")) {
+    Write-Host "📋 Creating .env from .env.example..." -ForegroundColor Yellow
+    Copy-Item ".env.example" ".env"
+    Write-Host "✅ .env created! Edit it with your secrets if needed." -ForegroundColor Green
+    Write-Host ""
+}
 
 Write-Host ""
-Write-Host "🎉 Development servers starting!" -ForegroundColor Green
-Write-Host "   Backend  → http://localhost:8080" -ForegroundColor White
-Write-Host "   Frontend → http://localhost:3000" -ForegroundColor White
+Write-Host "🚀 Starting AI Learning Platform (dev mode via Docker)..." -ForegroundColor Cyan
+Write-Host "   Backend:  http://localhost:8080" -ForegroundColor White
+Write-Host "   Frontend: http://localhost:3000" -ForegroundColor White
 Write-Host ""
-Write-Host "Each service runs in its own terminal window." -ForegroundColor DarkGray
-Write-Host "Close the terminal windows to stop the services." -ForegroundColor DarkGray
+Write-Host "   Hot-reload is enabled for both backend and frontend." -ForegroundColor DarkGray
+Write-Host "   Press Ctrl+C to stop all services." -ForegroundColor DarkGray
+Write-Host ""
+
+docker compose -f docker-compose.dev.yml up --build

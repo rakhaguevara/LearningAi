@@ -118,48 +118,60 @@ Built with Next.js 14, Golang (Gin), PostgreSQL, Redis, and Alibaba Cloud Qwen L
 
 ### Prerequisites
 
-- Go 1.22+
-- Node.js 20+
-- Docker & Docker Compose
-- PostgreSQL 16 (or use Docker)
-- Redis 7 (or use Docker)
+- **Docker Desktop** (WAJIB) — [Download di sini](https://www.docker.com/products/docker-desktop/)
+- Go 1.22+ (hanya jika ingin develop tanpa Docker)
+- Node.js 20+ (hanya jika ingin develop tanpa Docker)
 
-### 1. Clone & Configure
+### Quick Start (Cara Tercepat — Semua OS)
 
+**1. Clone repository:**
 ```bash
-cp .env.example .env
-# Edit .env with your credentials
+git clone <repository-url>
+cd alibabab
 ```
 
-### 2. Start Infrastructure
+**2. Buat file `.env`:**
+
+| OS | Command |
+|---|---|
+| **Mac/Linux** | `cp .env.example .env` |
+| **Windows CMD** | `copy .env.example .env` |
+| **Windows PowerShell** | `Copy-Item .env.example .env` |
+
+> **PENTING:** File `.env` TIDAK ikut ter-clone karena ada di `.gitignore`.
+> Anda WAJIB membuat file `.env` dari `.env.example` sebelum menjalankan apapun!
+
+**3. Jalankan project:**
+
+| OS | Command |
+|---|---|
+| **Mac/Linux** | `make dev` atau `./scripts/dev.sh` |
+| **Windows PowerShell** | `.\dev.ps1` |
+| **Windows CMD** | `scripts\dev.bat` |
+
+> Semua command di atas menjalankan Docker Compose, jadi Anda **tidak perlu install Go atau Node.js**.
+
+**4. Buka di browser:**
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8080
+- Health check: http://localhost:8080/health
+
+### Manual Mode (Tanpa Docker untuk Backend/Frontend)
+
+Jika ingin develop tanpa Docker (perlu Go + Node.js lokal):
 
 ```bash
+# 1. Start database & redis via Docker
 make docker-infra
-```
 
-This starts PostgreSQL and Redis in Docker containers.
+# 2. Ubah .env: ganti DB_HOST=localhost dan REDIS_HOST=localhost
 
-### 3. Run Backend
-
-```bash
+# 3. Run backend
 make dev-backend
-```
 
-The API server starts at `http://localhost:8080`. Migrations run automatically on startup.
-
-### 4. Run Frontend
-
-```bash
+# 4. Run frontend (terminal baru)
 cd frontend && npm install
 make dev-frontend
-```
-
-The frontend starts at `http://localhost:3000`.
-
-### 5. Run Everything Together
-
-```bash
-make dev
 ```
 
 ### Docker (Full Stack)
@@ -167,6 +179,7 @@ make dev
 ```bash
 make docker-up
 ```
+
 
 ## Available Make Commands
 

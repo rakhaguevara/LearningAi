@@ -1,7 +1,7 @@
 @echo off
 REM ══════════════════════════════════════════════════════════
 REM  AI Learning Platform — Development Server
-REM  Usage: scripts\dev.bat
+REM  Usage: scripts\dev.bat  (or double-click from Explorer)
 REM  Requirements: Docker Desktop
 REM ══════════════════════════════════════════════════════════
 
@@ -9,13 +9,15 @@ cd /d "%~dp0\.."
 
 REM Create .env from example if it doesn't exist
 if not exist .env (
-    echo Creating .env from .env.example...
-    copy .env.example .env
-    echo .env created. Edit it with your secrets if needed.
+    echo.
+    echo [INFO] Creating .env from .env.example...
+    copy .env.example .env >nul
+    echo [OK] .env created. Edit it with your secrets if needed.
+    echo.
 )
 
 echo.
-echo Starting AI Learning Platform (dev mode)...
+echo Starting AI Learning Platform (dev mode via Docker)...
 echo    Backend:  http://localhost:8080
 echo    Frontend: http://localhost:3000
 echo.
