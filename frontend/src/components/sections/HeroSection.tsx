@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
 import { FloatingIllustration } from "@/components/ui/FloatingIllustration";
+import { FloatingLearningIcons } from "@/components/ui/FloatingLearningIcons";
 import { useRouter } from "next/navigation";
 
 export function HeroSection() {
@@ -36,6 +37,9 @@ export function HeroSection() {
         className="absolute top-1/3 left-1/4 hidden lg:block"
       />
 
+      {/* Floating Learning Icons */}
+      <FloatingLearningIcons />
+
       <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8 text-center">
         {/* Badge */}
         <motion.div
@@ -68,9 +72,8 @@ export function HeroSection() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mt-6 text-lg md:text-xl text-brand-200/80 max-w-2xl mx-auto leading-relaxed"
         >
-          NeuraLearn uses adaptive AI to reshape how you understand complex
-          topics. Whether you love anime, basketball, or video games &mdash; we
-          translate knowledge into your language.
+          NeuraLearn transforms complex knowledge into adaptive learning experiences.
+          intelligently tailored to how you process, understand, and remember.
         </motion.p>
 
         {/* CTA Buttons */}
