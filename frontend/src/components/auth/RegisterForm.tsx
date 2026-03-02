@@ -30,12 +30,22 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.error || 'Registration failed');
+                // data.error could be a string or an object - extract safely
+                const errMsg =
+                    typeof data?.error === 'string'
+                        ? data.error
+                        : typeof data?.message === 'string'
+                            ? data.message
+                            : typeof data?.error?.message === 'string'
+                                ? data.error.message
+                                : 'Registration failed. Please try again.';
+                throw new Error(errMsg);
             }
 
             onSuccess(); // Switch back to login form
         } catch (err: any) {
-            setError(err.message);
+            setError(err?.message || 'Something went wrong. Please try again.');
+
         } finally {
             setIsLoading(false);
         }

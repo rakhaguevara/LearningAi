@@ -29,14 +29,22 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.error || 'Login failed');
+                const errMsg =
+                    typeof data?.error === 'string'
+                        ? data.error
+                        : typeof data?.message === 'string'
+                            ? data.message
+                            : typeof data?.error?.message === 'string'
+                                ? data.error.message
+                                : 'Login failed. Please check your credentials.';
+                throw new Error(errMsg);
             }
 
             onSuccess();
             // Optionally redirect to dashboard
             window.location.href = '/dashboard';
         } catch (err: any) {
-            setError(err.message);
+            setError(err?.message || 'Something went wrong. Please try again.');
         } finally {
             setIsLoading(false);
         }
