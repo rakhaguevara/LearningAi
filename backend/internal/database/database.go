@@ -58,6 +58,9 @@ func RunMigrations(db *sql.DB, log *zap.Logger) error {
 		createUserLearningProfilesTable,
 		createUserBehaviorSignalsTable,
 		createUserUploadedContextTable,
+		// AI Workspace tables
+		createDocumentChunksTable,
+		createAIInteractionsTable,
 	}
 
 	for i, m := range migrations {
@@ -259,4 +262,34 @@ CREATE TABLE IF NOT EXISTS user_uploaded_context (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_user_uploaded_context_user ON user_uploaded_context(user_id);
+`
+
+// createDocumentChunksTable stores RAG text chunks from user-uploaded documents.
+const createDocumentChunksTable = `
+CREATE TABLE IF NOT EXISTS document_chunks (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content     TEXT NOT NULL,
+    source      VARCHAR(500) NOT NULL,
+    chunk_idx   INT NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_document_chunks_user ON document_chunks(user_id);
+CREATE INDEX IF NOT EXISTS idx_document_chunks_source ON document_chunks(user_id, source);
+`
+
+// createAIInteractionsTable tracks all AI usage for metrics and analytics.
+const createAIInteractionsTable = `
+CREATE TABLE IF NOT EXISTS ai_interactions (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    question         TEXT NOT NULL,
+    output_format    VARCHAR(100) NOT NULL DEFAULT '',
+    response_summary TEXT NOT NULL DEFAULT '',
+    tokens_used      INT NOT NULL DEFAULT 0,
+    latency_ms       INT NOT NULL DEFAULT 0,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_ai_interactions_user ON ai_interactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_interactions_created ON ai_interactions(created_at DESC);
 `

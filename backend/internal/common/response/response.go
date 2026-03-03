@@ -39,11 +39,31 @@ func Err(c *gin.Context, err error) {
 		})
 		return
 	}
+	// Expose the actual error message so the frontend can show it clearly.
+	// In production, consider filtering sensitive details via an env flag.
+	msg := "Internal Server Error"
+	if err != nil {
+		msg = err.Error()
+	}
 	c.JSON(http.StatusInternalServerError, Response{
 		Success: false,
 		Error: &ErrorBody{
 			Code:    http.StatusInternalServerError,
-			Message: "Internal Server Error",
+			Message: msg,
+		},
+	})
+}
+
+func ErrStatus(c *gin.Context, statusCode int, err error) {
+	msg := "Internal Server Error"
+	if err != nil {
+		msg = err.Error()
+	}
+	c.JSON(statusCode, Response{
+		Success: false,
+		Error: &ErrorBody{
+			Code:    statusCode,
+			Message: msg,
 		},
 	})
 }

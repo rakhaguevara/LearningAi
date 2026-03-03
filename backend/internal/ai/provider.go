@@ -2,18 +2,15 @@ package ai
 
 import "context"
 
-// AIProvider defines the abstraction layer for AI services.
-// Implementations can target Qwen, OpenAI, or any other LLM backend.
+// AIProvider is the legacy abstraction layer kept for backward compatibility.
+// New code should use AIService directly.
 type AIProvider interface {
-	// ExplainConcept generates an explanation of a topic adapted to user interests.
 	ExplainConcept(ctx context.Context, req ExplainRequest) (*ExplainResponse, error)
-
-	// GenerateIllustration creates a contextual illustration prompt or image URL.
 	GenerateIllustration(ctx context.Context, req IllustrationRequest) (*IllustrationResponse, error)
-
-	// AdaptTeachingStyle returns a system prompt tailored to user preferences.
 	AdaptTeachingStyle(ctx context.Context, req StyleRequest) (*StyleResponse, error)
 }
+
+// ── Legacy request/response types ────────────────────────────────────────────
 
 type ExplainRequest struct {
 	Topic      string   `json:"topic" binding:"required"`
