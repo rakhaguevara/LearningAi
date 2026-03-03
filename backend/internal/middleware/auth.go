@@ -53,6 +53,12 @@ func Auth(jwtSvc *jwtpkg.Service, log *zap.Logger) gin.HandlerFunc {
 
 func CORS(frontendURL string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
+
+		// Allow the configured frontend URL or any localhost origin for development
+		if origin == frontendURL || strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:") {
+			c.Header("Access-Control-Allow-Origin", origin)
+		}
 
 		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin,Content-Type,Accept,Authorization")

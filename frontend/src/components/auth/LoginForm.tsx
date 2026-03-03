@@ -39,9 +39,17 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
                 throw new Error(errMsg);
             }
 
+            // Store tokens in localStorage
+            if (data.data?.access_token) {
+                localStorage.setItem('access_token', data.data.access_token);
+            }
+            if (data.data?.refresh_token) {
+                localStorage.setItem('refresh_token', data.data.refresh_token);
+            }
+            
             onSuccess();
-            // Optionally redirect to dashboard
-            window.location.href = '/dashboard';
+            // Redirect to onboarding first, then dashboard
+            window.location.href = '/onboarding';
         } catch (err: any) {
             if (err instanceof TypeError && err.message === 'Failed to fetch') {
                 setError('Cannot connect to server. Please check if the backend is running.');
