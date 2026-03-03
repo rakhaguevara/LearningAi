@@ -51,9 +51,13 @@ func Auth(jwtSvc *jwtpkg.Service, log *zap.Logger) gin.HandlerFunc {
 	}
 }
 
-func CORS() gin.HandlerFunc {
+func CORS(frontendURL string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
+		origin := frontendURL
+		if origin == "" {
+			origin = "*"
+		}
+		c.Header("Access-Control-Allow-Origin", origin)
 		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin,Content-Type,Accept,Authorization")
 		c.Header("Access-Control-Max-Age", "86400")
