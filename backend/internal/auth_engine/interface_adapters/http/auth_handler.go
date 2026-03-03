@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/adaptive-ai-learn/backend/internal/auth_engine/domain"
 	"github.com/adaptive-ai-learn/backend/internal/auth_engine/usecase"
 )
 
@@ -153,7 +154,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 }
 
 // setTokenCookies safely sets cookies with httpOnly
-func (h *AuthHandler) setTokenCookies(c *gin.Context, tp *usecase.domain.TokenPair) {
+func (h *AuthHandler) setTokenCookies(c *gin.Context, tp *domain.TokenPair) {
 	secure := false // change to true in prod against HTTPS
 	if gin.Mode() == gin.ReleaseMode {
 		secure = true
