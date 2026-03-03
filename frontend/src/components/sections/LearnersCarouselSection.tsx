@@ -133,12 +133,20 @@ export function LearnersCarouselSection() {
         </div>
 
         {/* 3D Carousel */}
+<<<<<<< HEAD
         <div className="relative h-[280px] md:h-[320px] perspective-1000">
+=======
+        <div className="relative h-[400px] md:h-[450px] perspective-1000">
+>>>>>>> 06ed7a1ababc016caaa54b9afb049a06ccda9b30
           <div className="relative w-full h-full flex items-center justify-center">
             {learners.map((learner, index) => (
               <motion.div
                 key={learner.id}
+<<<<<<< HEAD
                 className="absolute w-[320px] md:w-[400px] cursor-pointer"
+=======
+                className="absolute w-[280px] md:w-[320px] cursor-pointer"
+>>>>>>> 06ed7a1ababc016caaa54b9afb049a06ccda9b30
                 style={{
                   ...getCardStyle(index),
                   transformStyle: "preserve-3d",
@@ -146,6 +154,7 @@ export function LearnersCarouselSection() {
                 }}
                 onClick={() => goToSlide(index)}
               >
+<<<<<<< HEAD
                 <div className="h-[180px] md:h-[200px] bg-slate-800/40 backdrop-blur-md border border-white/10 rounded-2xl shadow-md p-5 md:p-6 flex flex-row items-center gap-4 md:gap-6 text-left transition-all duration-300 hover:border-white/20 hover:shadow-lg">
                   {/* Icon */}
                   <div className="text-4xl md:text-5xl opacity-60 flex-shrink-0">
@@ -164,6 +173,23 @@ export function LearnersCarouselSection() {
                       {learner.description}
                     </p>
                   </div>
+=======
+                <div className="h-[280px] md:h-[320px] bg-slate-800/40 backdrop-blur-md border border-white/10 rounded-2xl shadow-md p-6 md:p-8 flex flex-col items-center justify-center text-center transition-all duration-300 hover:border-white/20 hover:shadow-lg">
+                  {/* Icon */}
+                  <div className="text-4xl md:text-5xl mb-4 opacity-60">
+                    {learner.icon}
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="text-lg md:text-xl font-semibold text-white mb-3">
+                    {learner.title}
+                  </h3>
+
+                  {/* Description */}
+                  <p className="text-xs md:text-sm text-brand-200/70 leading-relaxed">
+                    {learner.description}
+                  </p>
+>>>>>>> 06ed7a1ababc016caaa54b9afb049a06ccda9b30
                 </div>
               </motion.div>
             ))}
@@ -205,11 +231,18 @@ export function LearnersCarouselSection() {
             <button
               key={index}
               onClick={() => goToSlide(index)}
+<<<<<<< HEAD
               className={`w-2 h-2 rounded-full transition-all duration-300 ${
                 index === activeIndex
                   ? "bg-accent-cyan w-6"
                   : "bg-white/20 hover:bg-white/40"
               }`}
+=======
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${index === activeIndex
+                ? "bg-accent-cyan w-6"
+                : "bg-white/20 hover:bg-white/40"
+                }`}
+>>>>>>> 06ed7a1ababc016caaa54b9afb049a06ccda9b30
               aria-label={`Go to slide ${index + 1}`}
             />
           ))}

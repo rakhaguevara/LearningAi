@@ -1,13 +1,14 @@
 'use client';
 
+import { siteConfig } from '@/lib/constants';
+
 interface GoogleLoginButtonProps {
     label?: string;
 }
 
 export default function GoogleLoginButton({ label = "Continue with Google" }: GoogleLoginButtonProps) {
     const handleGoogleLogin = () => {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-        window.location.href = `${apiUrl}/auth/google`;
+        window.location.href = `${siteConfig.api}/auth/google`;
     };
 
     return (

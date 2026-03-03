@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import GoogleLoginButton from './GoogleLoginButton';
+import { siteConfig } from '@/lib/constants';
 
 interface RegisterFormProps {
     onSuccess: () => void;
@@ -20,22 +21,32 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
         setError('');
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-            const res = await fetch(`${apiUrl}/auth/register`, {
+            const res = await fetch(`${siteConfig.api}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ name, email, password }),
             });
 
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.error || 'Registration failed');
+                const errMsg =
+                    data?.error?.detail
+                    || data?.error?.message
+                    || (typeof data?.error === 'string' ? data.error : null)
+                    || data?.message
+                    || 'Registration failed. Please try again.';
+                throw new Error(errMsg);
             }
 
             onSuccess(); // Switch back to login form
         } catch (err: any) {
-            setError(err.message);
+            if (err instanceof TypeError && err.message === 'Failed to fetch') {
+                setError('Cannot connect to server. Please check if the backend is running.');
+            } else {
+                setError(err?.message || 'Something went wrong. Please try again.');
+            }
         } finally {
             setIsLoading(false);
         }
