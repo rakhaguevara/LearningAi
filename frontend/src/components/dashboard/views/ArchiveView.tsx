@@ -33,9 +33,9 @@ export function ArchiveView() {
     return (
         <div className="p-6 h-full overflow-y-auto">
             {/* Header row */}
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
                 {/* Search */}
-                <div className="relative flex-1 max-w-sm">
+                <div className="relative flex-1 max-w-full sm:max-w-sm">
                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]"
                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -77,7 +77,7 @@ export function ArchiveView() {
             </div>
 
             {/* Stats row */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
                 {[
                     { label: 'Total Files', value: SAMPLE_FILES.length, icon: '📁' },
                     { label: 'Total Size', value: '11.5 MB', icon: '💾' },

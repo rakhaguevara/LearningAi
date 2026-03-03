@@ -26,18 +26,34 @@ const pageVariants = {
 
 export function DashboardLayout() {
     const [page, setPage] = useState<DashboardPage>('learn');
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
     const ActiveView = PAGE_VIEWS[page];
 
     return (
         <div className="flex h-screen overflow-hidden bg-[var(--bg-base)]">
-            {/* Sidebar */}
-            <Sidebar active={page} onChange={setPage} />
+            {/* Desktop Sidebar */}
+            <div className="hidden md:block">
+                <Sidebar active={page} onChange={setPage} />
+            </div>
+
+            {/* Mobile Sidebar Overlay */}
+            {mobileSidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                    onClick={() => setMobileSidebarOpen(false)}
+                />
+            )}
+
+            {/* Mobile Sidebar */}
+            <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 md:hidden ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <Sidebar active={page} onChange={(p) => { setPage(p); setMobileSidebarOpen(false); }} />
+            </div>
 
             {/* Main area */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Topbar */}
-                <Topbar page={page} onPageChange={setPage} />
+                <Topbar page={page} onPageChange={setPage} onMenuClick={() => setMobileSidebarOpen(true)} />
 
                 {/* Content */}
                 <main className="flex-1 overflow-hidden relative">

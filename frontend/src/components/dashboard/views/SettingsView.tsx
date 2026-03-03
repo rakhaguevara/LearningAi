@@ -19,17 +19,17 @@ export function SettingsView() {
                     <h3 className="text-xs font-semibold tracking-widest uppercase text-[var(--text-muted)] mb-4">Appearance</h3>
 
                     {/* Theme toggle */}
-                    <div className="flex items-center justify-between py-3 border-b border-[var(--border)]">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-[var(--border)] gap-3">
                         <div>
                             <p className="text-sm font-medium text-[var(--text-primary)]">Theme</p>
                             <p className="text-xs text-[var(--text-muted)] mt-0.5">Switch between dark and light mode</p>
                         </div>
-                        <div className="flex gap-2 p-1 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)]">
+                        <div className="flex gap-2 p-1 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] self-start sm:self-auto">
                             {(['dark', 'light'] as const).map((t) => (
                                 <button
                                     key={t}
                                     onClick={() => { if (theme !== t) toggleTheme(); }}
-                                    className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${theme === t
+                                    className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${theme === t
                                             ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-md'
                                             : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                                         }`}
@@ -41,12 +41,12 @@ export function SettingsView() {
                     </div>
 
                     {/* Language */}
-                    <div className="flex items-center justify-between py-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 gap-3">
                         <div>
                             <p className="text-sm font-medium text-[var(--text-primary)]">Language</p>
                             <p className="text-xs text-[var(--text-muted)] mt-0.5">Interface language</p>
                         </div>
-                        <select className="text-sm text-[var(--text-primary)] bg-[var(--bg-overlay)] border border-[var(--border)] rounded-xl px-3 py-1.5 focus:outline-none focus:border-violet-500/50 transition-all">
+                        <select className="text-sm text-[var(--text-primary)] bg-[var(--bg-overlay)] border border-[var(--border)] rounded-xl px-3 py-1.5 focus:outline-none focus:border-violet-500/50 transition-all self-start sm:self-auto">
                             <option value="en">🇺🇸 English</option>
                             <option value="id">🇮🇩 Bahasa Indonesia</option>
                         </select>
@@ -66,7 +66,7 @@ export function SettingsView() {
                         { label: 'Adaptive tone', description: 'Adjust explanation style based on behavior signals' },
                         { label: 'Stream responses', description: 'Show AI responses as they\'re generated' },
                     ].map((item) => (
-                        <div key={item.label} className="flex items-center justify-between py-3 border-b border-[var(--border)] last:border-none">
+                        <div key={item.label} className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-[var(--border)] last:border-none gap-3">
                             <div>
                                 <p className="text-sm font-medium text-[var(--text-primary)]">{item.label}</p>
                                 <p className="text-xs text-[var(--text-muted)] mt-0.5">{item.description}</p>
@@ -89,7 +89,7 @@ export function SettingsView() {
                         { label: 'Auto-start breaks', description: 'Automatically start break timer', defaultOn: false },
                         { label: 'Notifications', description: 'Browser notifications for session end', defaultOn: true },
                     ].map((item) => (
-                        <div key={item.label} className="flex items-center justify-between py-3 border-b border-[var(--border)] last:border-none">
+                        <div key={item.label} className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-[var(--border)] last:border-none gap-3">
                             <div>
                                 <p className="text-sm font-medium text-[var(--text-primary)]">{item.label}</p>
                                 <p className="text-xs text-[var(--text-muted)] mt-0.5">{item.description}</p>
@@ -107,12 +107,12 @@ export function SettingsView() {
                     className="p-5 rounded-2xl border border-red-500/20 bg-red-500/5"
                 >
                     <h3 className="text-xs font-semibold tracking-widest uppercase text-red-400/70 mb-4">Danger Zone</h3>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
                             <p className="text-sm font-medium text-[var(--text-primary)]">Delete Account</p>
                             <p className="text-xs text-[var(--text-muted)] mt-0.5">Permanently remove all data</p>
                         </div>
-                        <button className="px-4 py-2 rounded-xl border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-all font-medium">
+                        <button className="px-4 py-2 rounded-xl border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-all font-medium self-start sm:self-auto">
                             Delete
                         </button>
                     </div>

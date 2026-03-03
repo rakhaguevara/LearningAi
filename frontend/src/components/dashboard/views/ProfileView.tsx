@@ -45,7 +45,7 @@ export function ProfileView() {
                 <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-5 p-5 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)]"
+                    className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 p-5 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)]"
                 >
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-2xl font-bold shadow-xl shadow-violet-500/30 flex-shrink-0">
                         N
@@ -64,7 +64,7 @@ export function ProfileView() {
                     <motion.button
                         whileHover={{ scale: 1.03 }}
                         whileTap={{ scale: 0.97 }}
-                        className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-violet-500/40 transition-all flex-shrink-0"
+                        className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-violet-500/40 transition-all flex-shrink-0 w-full sm:w-auto"
                     >
                         Edit Profile
                     </motion.button>
@@ -119,7 +119,7 @@ export function ProfileView() {
                 </motion.div>
 
                 {/* Study Focus + Goal */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {[
                         {
                             label: 'Current Study Focus',

@@ -546,10 +546,10 @@ export function LearnNowView() {
     // ─────────────────────────────────────────────────────────────────────────
 
     return (
-        <div className="flex h-full overflow-hidden">
+        <div className="flex h-full overflow-hidden flex-col md:flex-row">
 
             {/* ── LEFT PANEL: Sources ──────────────────────────────────────────────── */}
-            <div className="w-60 flex-shrink-0 border-r border-[var(--border)] flex flex-col">
+            <div className="hidden md:flex w-60 flex-shrink-0 border-r border-[var(--border)] flex-col">
                 <div className="p-4 border-b border-[var(--border)]">
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-xs font-semibold tracking-widest uppercase text-[var(--text-muted)]">Sources</h3>
@@ -633,7 +633,7 @@ export function LearnNowView() {
             </div>
 
             {/* ── CENTER: Chat ─────────────────────────────────────────────────────── */}
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-w-0 h-full">
                 {/* Selected format badge */}
                 <div className="px-5 py-2.5 border-b border-[var(--border)] flex items-center gap-2 flex-wrap">
                     <span className="text-[10px] text-[var(--text-muted)] font-medium uppercase tracking-wider">Mode:</span>
@@ -769,7 +769,7 @@ export function LearnNowView() {
             </div>
 
             {/* ── RIGHT PANEL: AI Studio ────────────────────────────────────────────── */}
-            <div className="w-60 flex-shrink-0 border-l border-[var(--border)] flex flex-col">
+            <div className="hidden lg:flex w-60 flex-shrink-0 border-l border-[var(--border)] flex-col">
                 <div className="p-4 border-b border-[var(--border)]">
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />

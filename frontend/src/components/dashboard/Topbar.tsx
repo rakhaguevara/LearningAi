@@ -16,9 +16,10 @@ const PAGE_TITLES: Record<DashboardPage, string> = {
 interface TopbarProps {
     page: DashboardPage;
     onPageChange: (p: DashboardPage) => void;
+    onMenuClick?: () => void;
 }
 
-export function Topbar({ page, onPageChange }: TopbarProps) {
+export function Topbar({ page, onPageChange, onMenuClick }: TopbarProps) {
     const { theme, toggleTheme } = useTheme();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropRef = useRef<HTMLDivElement>(null);
@@ -38,6 +39,16 @@ export function Topbar({ page, onPageChange }: TopbarProps) {
         <header className="topbar-surface h-14 px-5 flex items-center justify-between flex-shrink-0 sticky top-0 z-30">
             {/* Page title */}
             <div className="flex items-center gap-3">
+                {/* Mobile menu button */}
+                <button
+                    onClick={onMenuClick}
+                    className="md:hidden w-9 h-9 flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-overlay)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]"
+                    aria-label="Open menu"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
                 <h1 className="text-base font-semibold text-[var(--text-primary)]">
                     {PAGE_TITLES[page]}
                 </h1>

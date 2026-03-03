@@ -84,12 +84,12 @@ export function PomodoroView() {
             <div className="w-full max-w-2xl">
 
                 {/* Mode selector */}
-                <div className="flex gap-2 p-1.5 rounded-2xl bg-[var(--bg-overlay)] border border-[var(--border)] mb-10 w-fit mx-auto">
+                <div className="flex flex-wrap justify-center gap-2 p-1.5 rounded-2xl bg-[var(--bg-overlay)] border border-[var(--border)] mb-10 w-fit mx-auto max-w-full">
                     {(Object.keys(TIMER_DURATIONS) as TimerMode[]).map((m) => (
                         <button
                             key={m}
                             onClick={() => switchMode(m)}
-                            className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${mode === m
+                            className={`px-3 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${mode === m
                                     ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/25'
                                     : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                                 }`}
@@ -101,11 +101,10 @@ export function PomodoroView() {
 
                 {/* Ring + Timer */}
                 <div className="flex flex-col items-center mb-10">
-                    <div className="relative w-56 h-56">
+                    <div className="relative w-48 h-48 sm:w-56 sm:h-56">
                         <svg
-                            width="224" height="224"
+                            className="-rotate-90 w-full h-full"
                             viewBox="0 0 224 224"
-                            className="-rotate-90"
                         >
                             <defs>
                                 <linearGradient id={ringGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -138,7 +137,7 @@ export function PomodoroView() {
                             <AnimatePresence mode="wait">
                                 <motion.span
                                     key={timeLeft}
-                                    className="text-5xl font-bold tabular-nums text-[var(--text-primary)]"
+                                    className="text-4xl sm:text-5xl font-bold tabular-nums text-[var(--text-primary)]"
                                     style={{ fontVariantNumeric: 'tabular-nums' }}
                                 >
                                     {formatTime(timeLeft)}
