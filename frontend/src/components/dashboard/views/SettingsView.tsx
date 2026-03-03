@@ -2,9 +2,11 @@
 
 import { motion } from 'framer-motion';
 import { useTheme } from '@/lib/ThemeContext';
+import { useLanguage } from '@/lib/LanguageContext';
 
 export function SettingsView() {
     const { theme, toggleTheme } = useTheme();
+    const { language, setLanguage, t } = useLanguage();
 
     return (
         <div className="h-full overflow-y-auto p-6">
@@ -16,25 +18,25 @@ export function SettingsView() {
                     animate={{ opacity: 1, y: 0 }}
                     className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)]"
                 >
-                    <h3 className="text-xs font-semibold tracking-widest uppercase text-[var(--text-muted)] mb-4">Appearance</h3>
+                    <h3 className="text-xs font-semibold tracking-widest uppercase text-[var(--text-muted)] mb-4">{t('appearance.title')}</h3>
 
                     {/* Theme toggle */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-[var(--border)] gap-3">
                         <div>
-                            <p className="text-sm font-medium text-[var(--text-primary)]">Theme</p>
-                            <p className="text-xs text-[var(--text-muted)] mt-0.5">Switch between dark and light mode</p>
+                            <p className="text-sm font-medium text-[var(--text-primary)]">{t('theme.label')}</p>
+                            <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('theme.description')}</p>
                         </div>
                         <div className="flex gap-2 p-1 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] self-start sm:self-auto">
-                            {(['dark', 'light'] as const).map((t) => (
+                            {(['dark', 'light'] as const).map((tTheme) => (
                                 <button
-                                    key={t}
-                                    onClick={() => { if (theme !== t) toggleTheme(); }}
-                                    className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${theme === t
+                                    key={tTheme}
+                                    onClick={() => { if (theme !== tTheme) toggleTheme(); }}
+                                    className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${theme === tTheme
                                             ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-md'
                                             : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                                         }`}
                                 >
-                                    {t === 'dark' ? '🌙 Dark' : '☀️ Light'}
+                                    {tTheme === 'dark' ? t('theme.dark') : t('theme.light')}
                                 </button>
                             ))}
                         </div>
@@ -43,10 +45,14 @@ export function SettingsView() {
                     {/* Language */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 gap-3">
                         <div>
-                            <p className="text-sm font-medium text-[var(--text-primary)]">Language</p>
-                            <p className="text-xs text-[var(--text-muted)] mt-0.5">Interface language</p>
+                            <p className="text-sm font-medium text-[var(--text-primary)]">{t('language.label')}</p>
+                            <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('language.description')}</p>
                         </div>
-                        <select className="text-sm text-[var(--text-primary)] bg-[var(--bg-overlay)] border border-[var(--border)] rounded-xl px-3 py-1.5 focus:outline-none focus:border-violet-500/50 transition-all self-start sm:self-auto">
+                        <select 
+                            value={language}
+                            onChange={(e) => setLanguage(e.target.value as 'en' | 'id')}
+                            className="text-sm text-[var(--text-primary)] bg-[var(--bg-overlay)] border border-[var(--border)] rounded-xl px-3 py-1.5 focus:outline-none focus:border-violet-500/50 transition-all self-start sm:self-auto"
+                        >
                             <option value="en">🇺🇸 English</option>
                             <option value="id">🇮🇩 Bahasa Indonesia</option>
                         </select>
@@ -60,16 +66,16 @@ export function SettingsView() {
                     transition={{ delay: 0.06 }}
                     className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)]"
                 >
-                    <h3 className="text-xs font-semibold tracking-widest uppercase text-[var(--text-muted)] mb-4">AI Preferences</h3>
+                    <h3 className="text-xs font-semibold tracking-widest uppercase text-[var(--text-muted)] mb-4">{t('aiPreferences.title')}</h3>
                     {[
-                        { label: 'Auto-summarize sources', description: 'Generate a summary when sources are added' },
-                        { label: 'Adaptive tone', description: 'Adjust explanation style based on behavior signals' },
-                        { label: 'Stream responses', description: 'Show AI responses as they\'re generated' },
+                        { labelKey: 'ai.autoSummarize', descKey: 'ai.autoSummarize.desc' },
+                        { labelKey: 'ai.adaptiveTone', descKey: 'ai.adaptiveTone.desc' },
+                        { labelKey: 'ai.streamResponses', descKey: 'ai.streamResponses.desc' },
                     ].map((item) => (
-                        <div key={item.label} className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-[var(--border)] last:border-none gap-3">
+                        <div key={item.labelKey} className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-[var(--border)] last:border-none gap-3">
                             <div>
-                                <p className="text-sm font-medium text-[var(--text-primary)]">{item.label}</p>
-                                <p className="text-xs text-[var(--text-muted)] mt-0.5">{item.description}</p>
+                                <p className="text-sm font-medium text-[var(--text-primary)]">{t(item.labelKey)}</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-0.5">{t(item.descKey)}</p>
                             </div>
                             <Toggle defaultOn />
                         </div>
@@ -83,16 +89,16 @@ export function SettingsView() {
                     transition={{ delay: 0.1 }}
                     className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)]"
                 >
-                    <h3 className="text-xs font-semibold tracking-widest uppercase text-[var(--text-muted)] mb-4">Podomoro</h3>
+                    <h3 className="text-xs font-semibold tracking-widest uppercase text-[var(--text-muted)] mb-4">{t('pomodoro.title')}</h3>
                     {[
-                        { label: 'Sound alerts', description: 'Play a sound when timer ends', defaultOn: true },
-                        { label: 'Auto-start breaks', description: 'Automatically start break timer', defaultOn: false },
-                        { label: 'Notifications', description: 'Browser notifications for session end', defaultOn: true },
+                        { labelKey: 'pomodoro.soundAlerts', descKey: 'pomodoro.soundAlerts.desc', defaultOn: true },
+                        { labelKey: 'pomodoro.autoStart', descKey: 'pomodoro.autoStart.desc', defaultOn: false },
+                        { labelKey: 'pomodoro.notifications', descKey: 'pomodoro.notifications.desc', defaultOn: true },
                     ].map((item) => (
-                        <div key={item.label} className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-[var(--border)] last:border-none gap-3">
+                        <div key={item.labelKey} className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-[var(--border)] last:border-none gap-3">
                             <div>
-                                <p className="text-sm font-medium text-[var(--text-primary)]">{item.label}</p>
-                                <p className="text-xs text-[var(--text-muted)] mt-0.5">{item.description}</p>
+                                <p className="text-sm font-medium text-[var(--text-primary)]">{t(item.labelKey)}</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-0.5">{t(item.descKey)}</p>
                             </div>
                             <Toggle defaultOn={item.defaultOn} />
                         </div>
@@ -106,14 +112,14 @@ export function SettingsView() {
                     transition={{ delay: 0.14 }}
                     className="p-5 rounded-2xl border border-red-500/20 bg-red-500/5"
                 >
-                    <h3 className="text-xs font-semibold tracking-widest uppercase text-red-400/70 mb-4">Danger Zone</h3>
+                    <h3 className="text-xs font-semibold tracking-widest uppercase text-red-400/70 mb-4">{t('dangerZone.title')}</h3>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
-                            <p className="text-sm font-medium text-[var(--text-primary)]">Delete Account</p>
-                            <p className="text-xs text-[var(--text-muted)] mt-0.5">Permanently remove all data</p>
+                            <p className="text-sm font-medium text-[var(--text-primary)]">{t('dangerZone.deleteAccount')}</p>
+                            <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('dangerZone.deleteAccount.desc')}</p>
                         </div>
                         <button className="px-4 py-2 rounded-xl border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-all font-medium self-start sm:self-auto">
-                            Delete
+                            {t('dangerZone.delete')}
                         </button>
                     </div>
                 </motion.section>

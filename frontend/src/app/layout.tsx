@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/lib/ThemeContext";
+import { LanguageProvider } from "@/lib/LanguageContext";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
@@ -24,7 +25,9 @@ export default function RootLayout({
     <html lang="en" className="antialiased">
       <body className="min-h-screen">
         <ThemeProvider>
-          {children}
+          <LanguageProvider>
+            {children}
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>
