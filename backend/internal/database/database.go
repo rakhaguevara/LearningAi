@@ -53,6 +53,11 @@ func RunMigrations(db *sql.DB, log *zap.Logger) error {
 		createAIInteractionHistoryTable,
 		createBehaviorSignalsTable,
 		createLearningStyleProfilesTable,
+		// Onboarding system migrations
+		migrateUsersAddProfileCompleted,
+		createUserLearningProfilesTable,
+		createUserBehaviorSignalsTable,
+		createUserUploadedContextTable,
 	}
 
 	for i, m := range migrations {
@@ -199,4 +204,59 @@ BEGIN
         ALTER TABLE users ALTER COLUMN google_id DROP NOT NULL;
     END IF;
 END $$;
+`
+
+// migrateUsersAddProfileCompleted adds the profile_completed flag for onboarding tracking.
+const migrateUsersAddProfileCompleted = `
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'profile_completed'
+    ) THEN
+        ALTER TABLE users ADD COLUMN profile_completed BOOLEAN NOT NULL DEFAULT false;
+    END IF;
+END $$;
+`
+
+// createUserLearningProfilesTable stores structured onboarding answers as JSONB.
+const createUserLearningProfilesTable = `
+CREATE TABLE IF NOT EXISTS user_learning_profiles (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    preferences  JSONB NOT NULL DEFAULT '{}',
+    meta         JSONB NOT NULL DEFAULT '{}',
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_learning_profiles_user ON user_learning_profiles(user_id);
+`
+
+// createUserBehaviorSignalsTable stores implicit behavioral signals collected during onboarding.
+const createUserBehaviorSignalsTable = `
+CREATE TABLE IF NOT EXISTS user_behavior_signals (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source      VARCHAR(100) NOT NULL DEFAULT 'onboarding',
+    signals     JSONB NOT NULL DEFAULT '{}',
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_user_behavior_signals_user ON user_behavior_signals(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_behavior_signals_source ON user_behavior_signals(source);
+`
+
+// createUserUploadedContextTable stores file/document metadata for future RAG integration.
+const createUserUploadedContextTable = `
+CREATE TABLE IF NOT EXISTS user_uploaded_context (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    file_name    VARCHAR(500) NOT NULL,
+    file_type    VARCHAR(100) NOT NULL,
+    storage_url  TEXT,
+    embedding_id TEXT,
+    meta         JSONB NOT NULL DEFAULT '{}',
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_user_uploaded_context_user ON user_uploaded_context(user_id);
 `

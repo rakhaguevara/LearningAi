@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import GoogleLoginButton from './GoogleLoginButton';
+import { storeAuthToken } from '@/lib/auth';
 import { siteConfig } from '@/lib/constants';
 
 interface LoginFormProps {
@@ -39,9 +40,17 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
                 throw new Error(errMsg);
             }
 
+            // Store token safely (guards against 'null'/'undefined' strings)
+            storeAuthToken(data?.data?.access_token);
+
             onSuccess();
-            // Optionally redirect to dashboard
-            window.location.href = '/dashboard';
+            // Redirect: missing profile_completed also means onboarding required
+            const profileCompleted = data?.data?.user?.profile_completed;
+            if (profileCompleted) {
+                window.location.href = '/dashboard';
+            } else {
+                window.location.href = '/onboarding';
+            }
         } catch (err: any) {
             if (err instanceof TypeError && err.message === 'Failed to fetch') {
                 setError('Cannot connect to server. Please check if the backend is running.');

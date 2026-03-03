@@ -7,16 +7,17 @@ import (
 )
 
 type User struct {
-	ID           uuid.UUID  `json:"id" db:"id"`
-	Email        string     `json:"email" db:"email"`
-	Name         string     `json:"name" db:"name"`
-	AvatarURL    string     `json:"avatar_url" db:"avatar_url"`
-	GoogleID     string     `json:"-" db:"google_id"`
-	PasswordHash string     `json:"-" db:"password_hash"`
-	Role         string     `json:"role" db:"role"`
-	LastLoginAt  *time.Time `json:"last_login_at" db:"last_login_at"`
-	CreatedAt    time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at" db:"updated_at"`
+	ID               uuid.UUID  `json:"id" db:"id"`
+	Email            string     `json:"email" db:"email"`
+	Name             string     `json:"name" db:"name"`
+	AvatarURL        string     `json:"avatar_url" db:"avatar_url"`
+	GoogleID         string     `json:"-" db:"google_id"`
+	PasswordHash     string     `json:"-" db:"password_hash"`
+	Role             string     `json:"role" db:"role"`
+	ProfileCompleted bool       `json:"profile_completed" db:"profile_completed"`
+	LastLoginAt      *time.Time `json:"last_login_at" db:"last_login_at"`
+	CreatedAt        time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at" db:"updated_at"`
 }
 
 type LearningProfile struct {

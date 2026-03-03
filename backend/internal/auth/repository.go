@@ -22,11 +22,11 @@ func NewRepository(db *sql.DB, log *zap.Logger) *Repository {
 func (r *Repository) FindByGoogleID(googleID string) (*models.User, error) {
 	var u models.User
 	err := r.db.QueryRow(`
-		SELECT id, email, name, avatar_url, google_id, role, last_login_at, created_at, updated_at
+		SELECT id, email, name, avatar_url, google_id, role, profile_completed, last_login_at, created_at, updated_at
 		FROM users WHERE google_id = $1
 	`, googleID).Scan(
 		&u.ID, &u.Email, &u.Name, &u.AvatarURL, &u.GoogleID,
-		&u.Role, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
+		&u.Role, &u.ProfileCompleted, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -39,11 +39,11 @@ func (r *Repository) FindByEmail(email string) (*models.User, error) {
 	var googleID sql.NullString
 	var passwordHash sql.NullString
 	err := r.db.QueryRow(`
-		SELECT id, email, name, avatar_url, google_id, password_hash, role, last_login_at, created_at, updated_at
+		SELECT id, email, name, avatar_url, google_id, password_hash, role, profile_completed, last_login_at, created_at, updated_at
 		FROM users WHERE email = $1
 	`, email).Scan(
 		&u.ID, &u.Email, &u.Name, &u.AvatarURL, &googleID, &passwordHash,
-		&u.Role, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
+		&u.Role, &u.ProfileCompleted, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -62,10 +62,10 @@ func (r *Repository) Create(email, name, avatarURL, googleID string) (*models.Us
 	err := r.db.QueryRow(`
 		INSERT INTO users (email, name, avatar_url, google_id)
 		VALUES ($1, $2, $3, $4)
-		RETURNING id, email, name, avatar_url, google_id, role, last_login_at, created_at, updated_at
+		RETURNING id, email, name, avatar_url, google_id, role, profile_completed, last_login_at, created_at, updated_at
 	`, email, name, avatarURL, googleID).Scan(
 		&u.ID, &u.Email, &u.Name, &u.AvatarURL, &u.GoogleID,
-		&u.Role, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
+		&u.Role, &u.ProfileCompleted, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -79,10 +79,10 @@ func (r *Repository) CreateWithPassword(email, name, avatarURL, passwordHash str
 	err := r.db.QueryRow(`
 		INSERT INTO users (email, name, avatar_url, password_hash)
 		VALUES ($1, $2, $3, $4)
-		RETURNING id, email, name, avatar_url, google_id, password_hash, role, last_login_at, created_at, updated_at
+		RETURNING id, email, name, avatar_url, google_id, password_hash, role, profile_completed, last_login_at, created_at, updated_at
 	`, email, name, avatarURL, passwordHash).Scan(
 		&u.ID, &u.Email, &u.Name, &u.AvatarURL, &googleID, &u.PasswordHash,
-		&u.Role, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
+		&u.Role, &u.ProfileCompleted, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err

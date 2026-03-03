@@ -11,6 +11,7 @@ import (
 	"github.com/adaptive-ai-learn/backend/internal/config"
 	"github.com/adaptive-ai-learn/backend/internal/learning"
 	mw "github.com/adaptive-ai-learn/backend/internal/middleware"
+	"github.com/adaptive-ai-learn/backend/internal/onboarding"
 	"github.com/adaptive-ai-learn/backend/internal/personalization"
 	"github.com/adaptive-ai-learn/backend/internal/user"
 	jwtpkg "github.com/adaptive-ai-learn/backend/pkg/jwt"
@@ -40,6 +41,11 @@ func Setup(router *gin.Engine, db *sql.DB, cfg *config.Config, log *zap.Logger) 
 	personalizationRepo := personalization.NewRepository(db, log)
 	personalizationSvc := personalization.NewService(personalizationRepo, log)
 	personalizationHandler := personalization.NewHandler(personalizationSvc)
+
+	// Onboarding
+	onboardingRepo := onboarding.NewRepository(db, log)
+	onboardingSvc := onboarding.NewService(onboardingRepo, log)
+	onboardingHandler := onboarding.NewHandler(onboardingSvc)
 
 	// ── Rate Limiter ────────────────────────────────────
 	rateLimiter := mw.NewRateLimiter(cfg.RateLimit.RPS, cfg.RateLimit.Burst)
@@ -96,6 +102,19 @@ func Setup(router *gin.Engine, db *sql.DB, cfg *config.Config, log *zap.Logger) 
 			personalizationGroup.POST("/signal", personalizationHandler.RecordSignal)
 			personalizationGroup.POST("/interest", personalizationHandler.AddInterest)
 			personalizationGroup.POST("/feedback", personalizationHandler.RecordFeedback)
+		}
+
+		// Onboarding
+		onboardingGroup := protected.Group("/onboarding")
+		{
+			onboardingGroup.GET("/status", onboardingHandler.GetStatus)
+			onboardingGroup.POST("/submit", onboardingHandler.Submit)
+		}
+
+		// Profile updates
+		profileGroup := protected.Group("/profile")
+		{
+			profileGroup.PUT("/update-learning", onboardingHandler.UpdateLearning)
 		}
 	}
 }

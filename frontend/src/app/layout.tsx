@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ThemeProvider } from "@/lib/ThemeContext";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
@@ -21,7 +22,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="antialiased">
-      <body className="bg-mesh-gradient min-h-screen">{children}</body>
+      <body className="min-h-screen">
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   );
 }
+

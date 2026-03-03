@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import GoogleLoginButton from './GoogleLoginButton';
+import { storeAuthToken } from '@/lib/auth';
 import { siteConfig } from '@/lib/constants';
 
 interface RegisterFormProps {
@@ -40,7 +41,11 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
                 throw new Error(errMsg);
             }
 
-            onSuccess(); // Switch back to login form
+            // Store token safely
+            storeAuthToken(data?.data?.access_token);
+
+            // New users always go to onboarding first
+            window.location.href = '/onboarding';
         } catch (err: any) {
             if (err instanceof TypeError && err.message === 'Failed to fetch') {
                 setError('Cannot connect to server. Please check if the backend is running.');
