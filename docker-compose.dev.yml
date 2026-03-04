@@ -7,7 +7,7 @@
 services:
   # ── PostgreSQL ──────────────────────────────────────────
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: ailearn-postgres
     restart: unless-stopped
     environment:
@@ -75,6 +75,12 @@ services:
       QWEN_API_KEY: ${QWEN_API_KEY:-}
       QWEN_API_ENDPOINT: ${QWEN_API_ENDPOINT:-https://dashscope-intl.aliyuncs.com/compatible-mode/v1}
       QWEN_MODEL: ${QWEN_MODEL:-qwen-plus}
+      QWEN_IMAGE_MODEL: ${QWEN_IMAGE_MODEL:-qwen-image-plus}
+      # Alibaba OSS
+      OSS_ENDPOINT: ${OSS_ENDPOINT:-oss-cn-hangzhou.aliyuncs.com}
+      OSS_BUCKET: ${OSS_BUCKET:-ailearn-assets}
+      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID:-}
+      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
       # Rate Limit
       RATE_LIMIT_RPS: ${RATE_LIMIT_RPS:-10}
       RATE_LIMIT_BURST: ${RATE_LIMIT_BURST:-20}

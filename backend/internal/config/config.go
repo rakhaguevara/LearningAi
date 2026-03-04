@@ -70,9 +70,10 @@ type GoogleOAuthConfig struct {
 }
 
 type QwenConfig struct {
-	APIKey   string
-	Endpoint string
-	Model    string
+	APIKey     string
+	Endpoint   string
+	Model      string
+	ImageModel string
 }
 
 type OSSConfig struct {
@@ -134,9 +135,10 @@ func Load() (*Config, error) {
 			RedirectURL:  getEnv("GOOGLE_REDIRECT_URL", "http://localhost:8080/auth/google/callback"),
 		},
 		Qwen: QwenConfig{
-			APIKey:   getEnv("QWEN_API_KEY", ""),
-			Endpoint: getEnv("QWEN_API_ENDPOINT", "https://dashscope.aliyuncs.com/api/v1"),
-			Model:    getEnv("QWEN_MODEL", "qwen-max"),
+			APIKey:     getEnv("QWEN_API_KEY", ""),
+			Endpoint:   getEnv("QWEN_API_ENDPOINT", "https://dashscope.aliyuncs.com/api/v1"),
+			Model:      getEnv("QWEN_MODEL", "qwen-max"),
+			ImageModel: getEnv("QWEN_IMAGE_MODEL", "qwen-image-plus"),
 		},
 		OSS: OSSConfig{
 			Endpoint:        getEnv("OSS_ENDPOINT", ""),

@@ -58,9 +58,10 @@ const schemaSummary = schemaPrefix + `Schema:
   "core_concept_explanation": "<string: clear comprehensive paragraph explaining the core idea>",
   "key_points": ["<string>", "..."],
   "real_world_example": "<string: structured real-world scenario or an example>",
-  "short_conclusion": "<string: brief concluding thought or recap>"
+  "short_conclusion": "<string: brief concluding thought or recap>",
+  "visual_scene_prompt": "<string: vivid 1 sentence scene for image generation, no special chars>"
 }
-Rules: Provide an educational depth. DO NOT make it overly compressed. core_concept_explanation MUST be a complete paragraph. key_points MUST have 3-5 entries, all strings.`
+Rules: Provide an educational depth. DO NOT make it overly compressed. core_concept_explanation MUST be a complete paragraph. key_points MUST have 3-5 entries, all strings. visual_scene_prompt MUST be a single descriptive sentence suitable for image generation.`
 
 const schemaDetailed = schemaPrefix + `Schema:
 {
@@ -68,9 +69,10 @@ const schemaDetailed = schemaPrefix + `Schema:
   "concept_explanation": "<string: clear multi-paragraph explanation>",
   "step_by_step_breakdown": ["<step 1>", "<step 2>", "..."],
   "example": "<string: concrete worked example>",
-  "mini_quiz": ["<question 1>?", "<question 2>?", "<question 3>?"]
+  "mini_quiz": ["<question 1>?", "<question 2>?", "<question 3>?"],
+  "visual_scene_prompt": "<string: vivid 1 sentence scene for image generation, no special chars>"
 }
-Rules: step_by_step_breakdown MUST have 3-7 entries. mini_quiz MUST have exactly 3 questions.`
+Rules: step_by_step_breakdown MUST have 3-7 entries. mini_quiz MUST have exactly 3 questions. visual_scene_prompt MUST be a single descriptive sentence suitable for image generation.`
 
 const schemaAnime = schemaPrefix + `Schema:
 {
@@ -99,31 +101,19 @@ const schemaAcademic = schemaPrefix + `Schema:
   "abstract": "<string: 2-3 sentence abstract>",
   "theoretical_background": "<string: formal explanation with definitions>",
   "methodology": "<string: step-by-step formal breakdown>",
-  "conclusion": "<string: formal summary and implications>"
-}`
+  "conclusion": "<string: formal summary and implications>",
+  "visual_scene_prompt": "<string: vivid 1 sentence scene for image generation, no special chars>"
+}
+Rules: visual_scene_prompt MUST be a single descriptive sentence suitable for image generation.`
 
 // BuildSystemPrompt returns the full system prompt string.
 func BuildSystemPrompt(cfg PromptBuilderConfig) string {
 	var sb strings.Builder
 
-	sb.WriteString("You are an adaptive AI physics tutor.\n\n")
-
-	// Strict Context Locking
-	if cfg.Topic != "" && cfg.Domain != "" {
-		sb.WriteString("Strict Rules:\n")
-		sb.WriteString("* Do NOT change topic.\n")
-		sb.WriteString("* Do NOT introduce unrelated characters.\n")
-		sb.WriteString("* Do NOT switch domain.\n")
-		sb.WriteString("* Do NOT invent unrelated background stories.\n")
-		sb.WriteString(fmt.Sprintf("* Stay strictly within the subject: %s (Domain: %s).\n", cfg.Topic, cfg.Domain))
-		sb.WriteString("* Creative analogy is allowed ONLY if directly explaining the physics concept.\n")
-		sb.WriteString("* All narrative must reinforce the physics explanation.\n")
-		sb.WriteString("If unsure, ask clarification instead of inventing.\n\n")
-	}
-
-	sb.WriteString(fmt.Sprintf("User learning style: %s\n", coalesce(cfg.LearningStyle, "adaptive")))
-	sb.WriteString(fmt.Sprintf("Dominant interest: %s\n", coalesce(cfg.DominantInterest, "general")))
-	sb.WriteString(fmt.Sprintf("Explanation depth: %s\n\n", coalesce(cfg.ExplanationDepth, "intermediate")))
+	sb.WriteString("You are an educational physics tutor.\n")
+	sb.WriteString("Explain physics concepts clearly.\n")
+	sb.WriteString("If the user asks for an illustration, generate a visual_scene_prompt describing a clear visual scene that explains the physics concept.\n")
+	sb.WriteString("Stay on topic and do not introduce unrelated concepts.\n\n")
 
 	// RAG context injection (BEFORE schema so model has context when writing JSON)
 	if strings.TrimSpace(cfg.RetrievedContext) != "" {
@@ -231,11 +221,11 @@ func ValidateStructuredJSON(raw string, format OutputFormat) (string, error) {
 	// Format-specific field checks
 	switch format {
 	case OutputFormatSummary:
-		if err := requireFields(parsed, "title", "summary_points", "key_formula", "real_world_connection"); err != nil {
+		if err := requireFields(parsed, "title", "core_concept_explanation", "key_points", "real_world_example", "short_conclusion", "visual_scene_prompt"); err != nil {
 			return "", err
 		}
 	case OutputFormatDetailed:
-		if err := requireFields(parsed, "title", "concept_explanation", "step_by_step_breakdown", "example", "mini_quiz"); err != nil {
+		if err := requireFields(parsed, "title", "concept_explanation", "step_by_step_breakdown", "example", "mini_quiz", "visual_scene_prompt"); err != nil {
 			return "", err
 		}
 	case OutputFormatAnime:
@@ -247,7 +237,7 @@ func ValidateStructuredJSON(raw string, format OutputFormat) (string, error) {
 			return "", err
 		}
 	case OutputFormatAcademic:
-		if err := requireFields(parsed, "title", "abstract", "theoretical_background", "methodology", "conclusion"); err != nil {
+		if err := requireFields(parsed, "title", "abstract", "theoretical_background", "methodology", "conclusion", "visual_scene_prompt"); err != nil {
 			return "", err
 		}
 	}

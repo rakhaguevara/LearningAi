@@ -166,7 +166,7 @@ function IllustrationImage({ url }: { url: string }) {
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="mt-3 overflow-hidden rounded-2xl border border-violet-500/25"
+            className="mt-3 overflow-hidden rounded-2xl border border-violet-500/25 shadow-xl shadow-violet-500/10"
             style={{ maxWidth: '400px' }}
         >
             <motion.img

@@ -96,12 +96,12 @@ type FinalResponse struct {
 //  4. Returns a FinalResponse with all data populated
 type AIOrchestrator struct {
 	textClient *QwenClient
-	imageGen   *ImageGenerator
+	imageGen   *AIImageService
 	log        *zap.Logger
 }
 
 // NewAIOrchestrator creates the orchestrator.
-func NewAIOrchestrator(textClient *QwenClient, imageGen *ImageGenerator, log *zap.Logger) *AIOrchestrator {
+func NewAIOrchestrator(textClient *QwenClient, imageGen *AIImageService, log *zap.Logger) *AIOrchestrator {
 	return &AIOrchestrator{
 		textClient: textClient,
 		imageGen:   imageGen,
@@ -117,30 +117,32 @@ func (o *AIOrchestrator) GenerateStructured(
 	sysPrompt string,
 	question string,
 	topic string,
+	history []ChatMessage,
 ) (*FinalResponse, error) {
 	orchStart := time.Now()
 
 	o.log.Info("orchestrator_start",
 		zap.String("format", string(format)),
 		zap.String("question_preview", truncate(question, 80)),
-		zap.String("topic", topic),
 	)
 
-	// ── Step 1: Call Qwen text model ──────────────────────────────────────────
-	chatResp, err := o.textClient.GenerateChatCompletion(ctx, ChatRequest{
-		Messages: []ChatMessage{
-			{Role: "system", Content: sysPrompt},
-			{Role: "user", Content: question},
-		},
-		MaxTokens:   2048,
-		Temperature: 0.5,
+	messages := make([]ChatMessage, 0, len(history)+2)
+	messages = append(messages, ChatMessage{Role: "system", Content: sysPrompt})
+	messages = append(messages, history...)
+	messages = append(messages, ChatMessage{Role: "user", Content: question})
+
+	resp, err := o.textClient.GenerateChatCompletion(ctx, ChatRequest{
+		Messages:     messages,
+		MaxTokens:    1500,
+		Temperature:  0.2,  // Prevents hallucination
+		ResponseJSON: true, // Native JSON output
 	})
 	if err != nil {
 		return nil, fmt.Errorf("text generation failed: %w", err)
 	}
 
-	rawContent := chatResp.Content
-	tokens := chatResp.TokensUsed
+	rawContent := resp.Content
+	tokens := resp.TokensUsed
 
 	o.log.Info("raw_ai_response_received",
 		zap.String("format", string(format)),
@@ -148,51 +150,59 @@ func (o *AIOrchestrator) GenerateStructured(
 		zap.String("raw_preview", truncate(rawContent, 200)),
 	)
 
-	// ── Step 2: Parse JSON into typed struct + topic validation + retry ────────
-	final, parseSuccess, retried := o.parseWithRetry(ctx, format, sysPrompt, question, rawContent, topic)
-	if retried && final != nil {
-		tokens += final.TokensUsed // retry consumed more tokens
-	}
+	// Parse JSON directly (no retry loop needed since we forced native JSON)
+	final, parseSuccess := o.parseRaw(format, rawContent)
 
 	o.log.Info("json_parse_result",
 		zap.Bool("json_parse_success", parseSuccess),
-		zap.Bool("retried", retried),
 		zap.String("format", string(format)),
 	)
+
+	if !parseSuccess || final == nil {
+		// Native json mode failed us (rare)
+		final = rawFallback(format, rawContent, tokens)
+	}
 
 	final.TokensUsed = tokens
 	final.IsStructuredJSON = parseSuccess
 	final.JSONParseSuccess = parseSuccess
 	final.Mode = format
 
-	// ── Step 3: Image generation for visual formats ───────────────────────────
-	isVisual := format == OutputFormatAnime || format == OutputFormatSports
+	// ── Step 3: Image generation ──────────────────────────────────────────────
 	final.IllustrationURL = ""
 
-	if isVisual && o.imageGen != nil {
-		scenePrompt := o.extractScenePromptFromFinal(final, format)
+	scenePrompt := ""
+	var rawMap map[string]interface{}
+	if err := json.Unmarshal([]byte(final.RawJSON), &rawMap); err == nil {
+		if v, ok := rawMap["visual_scene_prompt"].(string); ok {
+			scenePrompt = strings.TrimSpace(v)
+		}
+	}
 
+	if scenePrompt == "" {
+		o.log.Warn("image_generation_fallback_triggered",
+			zap.String("reason", "visual_scene_prompt missing from generated JSON"),
+			zap.String("topic_fallback", topic),
+		)
+		// Fallback to generating an image based on the topic alone.
+		scenePrompt = fmt.Sprintf("educational physics illustration of %s showing clear visual representation", coalesce(topic, "the physics concept previously discussed"))
+	}
+
+	if scenePrompt != "" && o.imageGen != nil {
 		o.log.Info("image_generation_triggered",
-			zap.Bool("image_triggered", scenePrompt != ""),
 			zap.String("format", string(format)),
 			zap.String("image_prompt", truncate(scenePrompt, 120)),
 		)
 
 		if scenePrompt != "" {
-			style := ImageStyleAnime
-			if format == OutputFormatSports {
-				style = ImageStyleSports
-			}
-			fullPrompt := BuildImagePrompt(style, scenePrompt)
-
 			imgCtx, imgCancel := context.WithTimeout(context.Background(), 80*time.Second)
 			defer imgCancel()
 
 			imgStart := time.Now()
-			imgResult := o.imageGen.GenerateImage(imgCtx, fullPrompt, style)
+			imgResult, err := o.imageGen.GenerateImage(imgCtx, scenePrompt)
 			imgDuration := int(time.Since(imgStart).Milliseconds())
 
-			if !imgResult.Fallback {
+			if err == nil && imgResult != nil && !imgResult.Fallback {
 				final.IllustrationURL = strings.TrimSpace(imgResult.ImageURL)
 				o.log.Info("image_generation_complete",
 					zap.String("image_url", final.IllustrationURL),
@@ -200,14 +210,21 @@ func (o *AIOrchestrator) GenerateStructured(
 					zap.Bool("fallback_triggered", false),
 				)
 			} else {
+				errMsg := "unknown error"
+				if err != nil {
+					errMsg = err.Error()
+				} else if imgResult != nil {
+					errMsg = imgResult.FallbackMsg
+				}
 				o.log.Warn("image_generation_fallback",
 					zap.Bool("fallback_triggered", true),
-					zap.String("image_error", imgResult.FallbackMsg),
+					zap.String("image_error", errMsg),
 					zap.Int("image_generation_duration", imgDuration),
 				)
 			}
 		} else {
-			o.log.Warn("image_generation_skipped — no visual_scene_prompt in response",
+			// This shouldn't happen with the fallback, but keeping as a safeguard
+			o.log.Warn("image_generation_skipped — no visual_scene_prompt and no fallback possible",
 				zap.String("format", string(format)),
 			)
 		}
@@ -233,131 +250,12 @@ func (o *AIOrchestrator) GenerateStructured(
 	return final, nil
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Internal: parse with retry
-// ──────────────────────────────────────────────────────────────────────────────
-
-// parseWithRetry attempts to parse the AI raw response into typed structs.
-// If parsing fails, it retries once with a correction prompt.
-// Always returns a non-nil FinalResponse.
-func (o *AIOrchestrator) parseWithRetry(
-	ctx context.Context,
-	format OutputFormat,
-	sysPrompt, question, rawContent, topic string,
-) (final *FinalResponse, success bool, retried bool) {
-	// Try parsing the initial response
-	final, success = o.parseRaw(format, rawContent)
-	isValidTopic := isTopicValid(rawContent, topic)
-
-	if success && isValidTopic {
-		return final, true, false
-	}
-
-	// ── Retry once with correction prompt ─────────────────────────────────────
-	o.log.Warn("parse_or_validation_failed — retrying",
-		zap.String("format", string(format)),
-		zap.Bool("json_parse_success", success),
-		zap.Bool("topic_valid", isValidTopic),
-	)
-
-	var correctionPrompt string
-	if !isValidTopic {
-		correctionPrompt = fmt.Sprintf(
-			"The previous answer drifted from the topic.\n"+
-				"Re-answer strictly about %s.\n"+
-				"Do not introduce unrelated elements.\n\n"+
-				"Required fields for format '%s':\n%s\n\n"+
-				"Start your response with { and end with }",
-			topic, format, schemaHint(format),
-		)
-	} else {
-		correctionPrompt = fmt.Sprintf(
-			"CRITICAL: Your previous response was not valid JSON or was missing required fields.\n\n"+
-				"You MUST return ONLY a single raw JSON object. No markdown code fences, no explanation text, no apology.\n"+
-				"Required fields for format '%s':\n%s\n\n"+
-				"Start your response with { and end with }",
-			format, schemaHint(format),
-		)
-	}
-
-	retryResp, retryErr := o.textClient.GenerateChatCompletion(ctx, ChatRequest{
-		Messages: []ChatMessage{
-			{Role: "system", Content: sysPrompt},
-			{Role: "user", Content: question},
-			{Role: "assistant", Content: rawContent},
-			{Role: "user", Content: correctionPrompt},
-		},
-		MaxTokens:   2048,
-		Temperature: 0.1, // Very low temp for deterministic JSON
-	})
-	if retryErr != nil {
-		o.log.Warn("json_parse_retry_call_failed", zap.Error(retryErr))
-		// Return a fallback FinalResponse with the raw text
-		return rawFallback(format, rawContent, 0), false, true
-	}
-
-	retryTokens := retryResp.TokensUsed
-	final, success = o.parseRaw(format, retryResp.Content)
-	isValidTopicRetry := isTopicValid(retryResp.Content, topic)
-
-	if success && isValidTopicRetry {
-		final.TokensUsed = retryTokens
-		o.log.Info("parse_and_validation_succeeded_after_retry")
-		return final, true, true
-	}
-
-	// Both attempts failed — use safe fallback
-	o.log.Warn("validation_failed_after_retry — using safe fallback",
-		zap.Bool("json_parse_success", success),
-		zap.Bool("topic_valid", isValidTopicRetry),
-	)
-	fallbackMsg := "Let's refocus on the physics concept."
-	fallback := rawFallback(format, fallbackMsg, retryTokens)
-	return fallback, false, true
-}
-
-func isTopicValid(content, topic string) bool {
-	if topic == "" {
-		return true
-	}
-	lowerC := strings.ToLower(content)
-	lowerT := strings.ToLower(topic)
-
-	// Check exact match
-	if strings.Contains(lowerC, lowerT) {
-		return true
-	}
-
-	// Check if significant keywords exist
-	words := strings.Fields(lowerT)
-	for _, w := range words {
-		if len(w) > 3 && strings.Contains(lowerC, w) {
-			return true
-		}
-	}
-	// Strict: If we totally can't find core keywords, reject.
-	return false
-}
+// (Legacy Retry functions removed since Native JSON mode guarantees structure)
 
 // parseRaw attempts to unmarshal raw AI output into the correct typed struct.
 func (o *AIOrchestrator) parseRaw(format OutputFormat, raw string) (*FinalResponse, bool) {
-	// Strip markdown code fences
+	// Native JSON mode guarantees JSON format, no regex stripping needed.
 	s := strings.TrimSpace(raw)
-	for _, fence := range []string{"```json", "```"} {
-		if strings.HasPrefix(s, fence) {
-			s = strings.TrimPrefix(s, fence)
-			if idx := strings.LastIndex(s, "```"); idx >= 0 {
-				s = s[:idx]
-			}
-			s = strings.TrimSpace(s)
-			break
-		}
-	}
-
-	// Find JSON object boundary (in case model prepended text)
-	if start := strings.Index(s, "{"); start > 0 {
-		s = s[start:]
-	}
 
 	result := &FinalResponse{RawJSON: s}
 
@@ -373,6 +271,7 @@ func (o *AIOrchestrator) parseRaw(format OutputFormat, raw string) (*FinalRespon
 		result.Anime = &v
 		result.Title = v.EpisodeTitle
 		result.MainContent = v.PhysicsExplanation
+		result.IllustrationURL = v.VisualScenePrompt // mapped internally, but will be overwritten by the real generated OSS URL later
 		return result, true
 
 	case OutputFormatSports:
@@ -386,6 +285,7 @@ func (o *AIOrchestrator) parseRaw(format OutputFormat, raw string) (*FinalRespon
 		result.Sports = &v
 		result.Title = v.GameTitle
 		result.MainContent = v.PlayBreakdown
+		result.IllustrationURL = v.VisualScenePrompt
 		return result, true
 
 	case OutputFormatSummary:
@@ -431,23 +331,7 @@ func (o *AIOrchestrator) parseRaw(format OutputFormat, raw string) (*FinalRespon
 	return result, false
 }
 
-// extractScenePromptFromFinal pulls the visual_scene_prompt from the typed struct.
-func (o *AIOrchestrator) extractScenePromptFromFinal(f *FinalResponse, format OutputFormat) string {
-	switch format {
-	case OutputFormatAnime:
-		if f.Anime != nil {
-			return strings.TrimSpace(f.Anime.VisualScenePrompt)
-		}
-		// Fallback: try raw JSON
-		return ExtractScenePrompt(f.RawJSON)
-	case OutputFormatSports:
-		if f.Sports != nil {
-			return strings.TrimSpace(f.Sports.VisualScenePrompt)
-		}
-		return ExtractScenePrompt(f.RawJSON)
-	}
-	return ""
-}
+// (Old extractScenePromptFromFinal removed in favor of direct json map lookup)
 
 // rawFallback creates a FinalResponse for when JSON parsing completely fails.
 // The raw text is exposed as MainContent so the user at least sees something.

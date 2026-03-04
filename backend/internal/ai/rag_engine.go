@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/google/uuid"
+	"github.com/pgvector/pgvector-go"
 	"go.uber.org/zap"
 )
 
@@ -28,14 +28,15 @@ const (
 	avgCharsPerToken = 4   // rough char:token ratio
 )
 
-// RAGEngine handles document storage and keyword-based retrieval.
+// RAGEngine handles document storage and pgvector similarity retrieval.
 type RAGEngine struct {
-	db  *sql.DB
-	log *zap.Logger
+	db        *sql.DB
+	apiClient *QwenClient
+	log       *zap.Logger
 }
 
-func NewRAGEngine(db *sql.DB, log *zap.Logger) *RAGEngine {
-	return &RAGEngine{db: db, log: log}
+func NewRAGEngine(db *sql.DB, apiClient *QwenClient, log *zap.Logger) *RAGEngine {
+	return &RAGEngine{db: db, apiClient: apiClient, log: log}
 }
 
 // StoreChunks splits text into chunks and persists them for a user.
@@ -45,19 +46,29 @@ func (r *RAGEngine) StoreChunks(ctx context.Context, userID uuid.UUID, text, sou
 		return 0, nil
 	}
 
+	embeddings, err := r.apiClient.GenerateEmbeddings(ctx, chunks)
+	if err != nil {
+		r.log.Warn("failed to generate embeddings, chunks will be stored without vectors", zap.Error(err))
+	}
+
 	stored := 0
 	for idx, chunk := range chunks {
-		const q = `
-			INSERT INTO document_chunks (user_id, content, source, chunk_idx, created_at)
-			VALUES ($1, $2, $3, $4, NOW())`
+		var emb interface{}
+		if idx < len(embeddings) && embeddings[idx] != nil {
+			emb = pgvector.NewVector(embeddings[idx])
+		}
 
-		if _, err := r.db.ExecContext(ctx, q, userID, chunk, source, idx); err != nil {
+		const q = `
+			INSERT INTO document_chunks (user_id, content, source, chunk_idx, embedding, created_at)
+			VALUES ($1, $2, $3, $4, $5, NOW())`
+
+		if _, err := r.db.ExecContext(ctx, q, userID, chunk, source, idx, emb); err != nil {
 			return stored, fmt.Errorf("storing chunk %d: %w", idx, err)
 		}
 		stored++
 	}
 
-	r.log.Info("stored document chunks",
+	r.log.Info("stored document chunks with vectors",
 		zap.String("user_id", userID.String()),
 		zap.String("source", source),
 		zap.Int("chunks", stored),
@@ -66,47 +77,30 @@ func (r *RAGEngine) StoreChunks(ctx context.Context, userID uuid.UUID, text, sou
 	return stored, nil
 }
 
-// RetrieveContext fetches the most relevant chunks for a query using keyword matching.
-// Future upgrade: replace with pgvector cosine similarity.
+// RetrieveContext fetches the most relevant chunks using exact Cosine Similarity.
 func (r *RAGEngine) RetrieveContext(ctx context.Context, userID uuid.UUID, query string) (string, int, error) {
-	keywords := extractKeywords(query)
-	if len(keywords) == 0 {
+	if strings.TrimSpace(query) == "" {
 		return "", 0, nil
 	}
 
-	var conditions []string
-	var args []interface{}
-	args = append(args, userID)
-	argID := 2
-
-	for _, kw := range keywords {
-		conditions = append(conditions, fmt.Sprintf("content ILIKE $%d", argID))
-		args = append(args, "%"+kw+"%")
-		argID++
+	// 1. Generate query embedding
+	qEmb, err := r.apiClient.GenerateEmbeddings(ctx, []string{query})
+	if err != nil || len(qEmb) == 0 {
+		return "", 0, fmt.Errorf("failed to generate query embedding: %w", err)
 	}
 
-	whereClause := "user_id = $1"
-	var scoreExpr string
-	if len(conditions) > 0 {
-		// Calculate a basic score based on keyword matches using boolean casting
-		// e.g. ( (content ILIKE '%kw1%')::int + (content ILIKE '%kw2%')::int ) AS score
-		scoreExpr = "( (" + strings.Join(conditions, ")::int + (") + ")::int )"
-		// Only retrieve chunks that match AT LEAST ONE keyword
-		whereClause += " AND (" + strings.Join(conditions, " OR ") + ")"
-	} else {
-		scoreExpr = "1.0"
-	}
+	vec := pgvector.NewVector(qEmb[0])
 
-	q := fmt.Sprintf(`
-		SELECT content, source, %s AS score
+	// 2. Vector search (Cosine distance: <-> returns distance, we want lowest distance)
+	// We only want chunks where distance < 0.6 (or similarity > 0.4)
+	q := `
+		SELECT content, source
 		FROM document_chunks
-		WHERE %s
-		ORDER BY score DESC, created_at DESC
-		LIMIT $%d`, scoreExpr, whereClause, argID)
+		WHERE user_id = $1 AND embedding IS NOT NULL
+		ORDER BY embedding <=> $2
+		LIMIT $3`
 
-	args = append(args, chunksPerQuery)
-
-	rows, err := r.db.QueryContext(ctx, q, args...)
+	rows, err := r.db.QueryContext(ctx, q, userID, vec, chunksPerQuery)
 	if err != nil {
 		return "", 0, fmt.Errorf("retrieving chunks: %w", err)
 	}
@@ -116,8 +110,7 @@ func (r *RAGEngine) RetrieveContext(ctx context.Context, userID uuid.UUID, query
 	chunksFound := 0
 	for rows.Next() {
 		var content, source string
-		var score float64
-		if err := rows.Scan(&content, &source, &score); err != nil {
+		if err := rows.Scan(&content, &source); err != nil {
 			continue
 		}
 		parts = append(parts, fmt.Sprintf("[Source: %s]\n%s", source, content))
@@ -228,24 +221,4 @@ func splitSentences(text string) []string {
 	return sents
 }
 
-// extractKeywords returns lowercase words longer than 3 chars, deduped.
-func extractKeywords(query string) []string {
-	words := strings.FieldsFunc(query, func(r rune) bool {
-		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
-	})
-
-	seen := make(map[string]struct{})
-	var kws []string
-	for _, w := range words {
-		lw := strings.ToLower(w)
-		if len(lw) > 3 {
-			if _, ok := seen[lw]; !ok {
-				seen[lw] = struct{}{}
-				kws = append(kws, lw)
-			}
-		}
-	}
-	return kws
-}
-
-// NOTE: keywordLikeScore is reserved for future ts_rank / pgvector upgrade.
+// (End of RAG Engine helpers)

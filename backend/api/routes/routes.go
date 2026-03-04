@@ -33,11 +33,19 @@ func Setup(router *gin.Engine, db *sql.DB, cfg *config.Config, log *zap.Logger) 
 
 	// ── AI Workspace ─────────────────────────────────────
 	qwenClient := ai.NewQwenClient(cfg.Qwen.APIKey, cfg.Qwen.Endpoint, cfg.Qwen.Model, log)
-	ragEngine := ai.NewRAGEngine(db, log)
+	ragEngine := ai.NewRAGEngine(db, qwenClient, log)
 	fileParser := ai.NewFileParser(qwenClient, log)
 	pptGen := ai.NewPPTGenerator("", log)
 	tts := ai.NewTTSService(cfg.Qwen.APIKey, cfg.Qwen.Endpoint, "", log)
-	imageGen := ai.NewImageGenerator(cfg.Qwen.APIKey, cfg.Qwen.Endpoint, log)
+	imageGen := ai.NewAIImageService(
+		cfg.Qwen.APIKey,
+		cfg.Qwen.ImageModel,
+		cfg.OSS.Endpoint,
+		cfg.OSS.Bucket,
+		cfg.OSS.AccessKeyID,
+		cfg.OSS.AccessKeySecret,
+		log,
+	)
 
 	aiSvc := ai.NewAIService(qwenClient, ragEngine, fileParser, pptGen, tts, imageGen, db, log)
 	aiHandler := ai.NewHandler(aiSvc, log)

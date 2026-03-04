@@ -61,6 +61,8 @@ func RunMigrations(db *sql.DB, log *zap.Logger) error {
 		// AI Workspace tables
 		createDocumentChunksTable,
 		createAIInteractionsTable,
+		migrateAddPgVectorExtension,
+		migrateDocumentChunksVectorColumn,
 	}
 
 	for i, m := range migrations {
@@ -276,6 +278,25 @@ CREATE TABLE IF NOT EXISTS document_chunks (
 );
 CREATE INDEX IF NOT EXISTS idx_document_chunks_user ON document_chunks(user_id);
 CREATE INDEX IF NOT EXISTS idx_document_chunks_source ON document_chunks(user_id, source);
+`
+
+// migrateAddPgVectorExtension safely enables the pgvector extension.
+const migrateAddPgVectorExtension = `CREATE EXTENSION IF NOT EXISTS vector;`
+
+// migrateDocumentChunksVectorColumn adds the 1536-dim embedding vector to document_chunks.
+const migrateDocumentChunksVectorColumn = `
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'document_chunks' AND column_name = 'embedding'
+    ) THEN
+        ALTER TABLE document_chunks ADD COLUMN embedding vector(1536);
+        -- Create HNSW index for fast Cosine Distance (vector_cosine_ops)
+        CREATE INDEX IF NOT EXISTS idx_document_chunks_embedding 
+            ON document_chunks USING hnsw (embedding vector_cosine_ops);
+    END IF;
+END $$;
 `
 
 // createAIInteractionsTable tracks all AI usage for metrics and analytics.

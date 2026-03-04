@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -70,7 +71,7 @@ type AIService struct {
 	fileParser   *FileParser
 	pptGen       *PPTGenerator
 	tts          *TTSService
-	imageGen     *ImageGenerator
+	imageGen     *AIImageService
 	topicExt     *TopicExtractor
 	db           *sql.DB
 	log          *zap.Logger
@@ -82,7 +83,7 @@ func NewAIService(
 	fileParser *FileParser,
 	pptGen *PPTGenerator,
 	tts *TTSService,
-	imageGen *ImageGenerator,
+	imageGen *AIImageService,
 	db *sql.DB,
 	log *zap.Logger,
 ) *AIService {
@@ -169,6 +170,81 @@ func (s *AIService) Ask(ctx context.Context, userID uuid.UUID, req AskRequest) (
 		TargetLanguage:   req.TargetLang,
 	})
 
+	// --- Step 4.5: Fetch History ---
+	var historyMessages []ChatMessage
+	if req.SessionID != "" {
+		if sid, err := uuid.Parse(req.SessionID); err == nil {
+			rows, err := s.db.QueryContext(ctx, "SELECT prompt, response FROM ai_interaction_history WHERE session_id = $1 ORDER BY created_at DESC LIMIT 5", sid)
+			if err == nil && rows != nil {
+				defer rows.Close()
+				var tempMsg []ChatMessage
+				for rows.Next() {
+					var p, r string
+					if err := rows.Scan(&p, &r); err == nil {
+						tempMsg = append(tempMsg,
+							ChatMessage{Role: "user", Content: p},
+							ChatMessage{Role: "assistant", Content: r},
+						)
+					}
+				}
+				// Reverse to chronological
+				for i, j := 0, len(tempMsg)-2; i < j; i, j = i+2, j-2 {
+					tempMsg[i], tempMsg[j] = tempMsg[j], tempMsg[i]
+					tempMsg[i+1], tempMsg[j+1] = tempMsg[j+1], tempMsg[i+1]
+				}
+				historyMessages = tempMsg
+			}
+		}
+	}
+
+	// --- Image Intent Detection ---
+	generateImage := false
+	for _, kw := range []string{"gambar", "ilustrasi", "diagram", "show image", "generate image"} {
+		if strings.Contains(lowerQ, kw) {
+			generateImage = true
+			break
+		}
+	}
+
+	if generateImage && s.imageGen != nil {
+		s.log.Info("image_generation_intent_detected", zap.String("query", req.Question))
+
+		promptCtx := topic
+		if promptCtx == "" || promptCtx == "general" {
+			promptCtx = "the physics concept previously discussed"
+			if len(historyMessages) > 0 {
+				lastMsg := historyMessages[len(historyMessages)-1].Content
+				var parsed map[string]interface{}
+				if err := json.Unmarshal([]byte(lastMsg), &parsed); err == nil {
+					if t, ok := parsed["title"].(string); ok {
+						promptCtx = t
+					} else if t, ok := parsed["episode_title"].(string); ok {
+						promptCtx = t
+					} else if t, ok := parsed["game_title"].(string); ok {
+						promptCtx = t
+					}
+				}
+			}
+		}
+
+		imagePrompt := fmt.Sprintf("educational physics illustration of %s showing clear visual representation", promptCtx)
+		s.log.Info("direct_image_prompt_constructed", zap.String("image_prompt", imagePrompt))
+
+		imgCtx, imgCancel := context.WithTimeout(context.Background(), 80*time.Second)
+		defer imgCancel()
+
+		imgResult, err := s.imageGen.GenerateImage(imgCtx, imagePrompt)
+		if err == nil && imgResult != nil && !imgResult.Fallback {
+			return &AskResponse{
+				Answer:          "Berikut adalah ilustrasi yang kamu minta:",
+				OutputFormat:    req.OutputFormat,
+				IllustrationURL: imgResult.ImageURL,
+				LatencyMs:       imgResult.DurationMs,
+			}, nil
+		}
+		s.log.Warn("direct_image_generation_failed", zap.Error(err))
+	}
+
 	// --- Step 5: Route based on output format ---
 	var finalAnswer string
 	var downloadURL string
@@ -236,8 +312,8 @@ func (s *AIService) Ask(ctx context.Context, userID uuid.UUID, req AskRequest) (
 
 	case OutputFormatAnime, OutputFormatSports, OutputFormatSummary, OutputFormatDetailed, OutputFormatAcademic:
 		// ── Delegate entirely to AIOrchestrator ─────────────────────────────────
-		// The orchestrator handles: text gen → JSON parse/retry/validation → image gen
-		orchestrated, orchErr := s.orchestrator.GenerateStructured(ctx, req.OutputFormat, sysPrompt, req.Question, topic)
+		// The orchestrator handles: text gen → JSON parse/validation → image gen
+		orchestrated, orchErr := s.orchestrator.GenerateStructured(ctx, req.OutputFormat, sysPrompt, req.Question, topic, historyMessages)
 		if orchErr != nil {
 			return nil, fmt.Errorf("orchestrator failed: %w", orchErr)
 		}
