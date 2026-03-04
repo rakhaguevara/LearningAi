@@ -457,16 +457,24 @@ export function LearnNowView() {
         setIsLoading(true);
 
         try {
+            // Always send with a format — default to quick_summary if none selected
+            // This prevents the backend "needs_format" loop from ever triggering
+            const format = selectedFormat ?? 'quick_summary';
+
             const req = {
                 question,
-                output_format: selectedFormat ?? undefined,
-                target_language: selectedFormat === 'translation' ? translationLang : undefined,
+                output_format: format,
+                target_language: format === 'translation' ? translationLang : undefined,
             };
 
             const resp: AskResponse = await askAI(req);
 
+            // needs_format guard kept as safety net only (should never trigger now)
             if (resp.needs_format) {
-                addMessage({ role: 'system', text: resp.format_prompt ?? '' });
+                addMessage({
+                    role: 'system',
+                    text: '⚠️ Please select an output format from the right panel first.',
+                });
                 setIsLoading(false);
                 return;
             }

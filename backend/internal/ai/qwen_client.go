@@ -15,7 +15,7 @@ import (
 )
 
 // ──────────────────────────────────────────────────────────────────────────────
-// DashScope API wire types
+// OpenAI-compatible API wire types (DashScope intl compatible-mode)
 // ──────────────────────────────────────────────────────────────────────────────
 
 type ChatMessage struct {
@@ -23,38 +23,34 @@ type ChatMessage struct {
 	Content string `json:"content"`
 }
 
-type qwenChatRequest struct {
-	Model      string             `json:"model"`
-	Input      qwenInput          `json:"input"`
-	Parameters qwenChatParameters `json:"parameters,omitempty"`
+// openAIChatRequest is the OpenAI-compatible request format.
+type openAIChatRequest struct {
+	Model       string        `json:"model"`
+	Messages    []ChatMessage `json:"messages"`
+	MaxTokens   int           `json:"max_tokens,omitempty"`
+	Temperature float64       `json:"temperature,omitempty"`
+	TopP        float64       `json:"top_p,omitempty"`
 }
 
-type qwenInput struct {
-	Messages []ChatMessage `json:"messages"`
-}
-
-type qwenChatParameters struct {
-	ResultFormat string  `json:"result_format,omitempty"` // "message"
-	MaxTokens    int     `json:"max_tokens,omitempty"`
-	Temperature  float64 `json:"temperature,omitempty"`
-	TopP         float64 `json:"top_p,omitempty"`
-}
-
-type qwenChatResponse struct {
-	Output struct {
-		Choices []struct {
-			Message      ChatMessage `json:"message"`
-			FinishReason string      `json:"finish_reason"`
-		} `json:"choices"`
-	} `json:"output"`
+// openAIChatResponse is the OpenAI-compatible response format.
+type openAIChatResponse struct {
+	Choices []struct {
+		Message      ChatMessage `json:"message"`
+		FinishReason string      `json:"finish_reason"`
+		Index        int         `json:"index"`
+	} `json:"choices"`
 	Usage struct {
-		InputTokens  int `json:"input_tokens"`
-		OutputTokens int `json:"output_tokens"`
-		TotalTokens  int `json:"total_tokens"`
+		PromptTokens     int `json:"prompt_tokens"`
+		CompletionTokens int `json:"completion_tokens"`
+		TotalTokens      int `json:"total_tokens"`
 	} `json:"usage"`
-	RequestID string `json:"request_id"`
-	Code      string `json:"code"`
-	Message   string `json:"message"`
+	ID    string `json:"id"`
+	Model string `json:"model"`
+	// Error fields (returned with HTTP 4xx/5xx)
+	Error *struct {
+		Message string `json:"message"`
+		Code    string `json:"code"`
+	} `json:"error,omitempty"`
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -101,8 +97,8 @@ func NewQwenClient(apiKey, baseURL, model string, log *zap.Logger) *QwenClient {
 	}
 }
 
-// GenerateChatCompletion sends a multi-turn chat to DashScope and returns the
-// assistant reply, token usage, and latency.
+// GenerateChatCompletion sends a multi-turn chat to DashScope (OpenAI-compatible)
+// and returns the assistant reply, token usage, and latency.
 func (c *QwenClient) GenerateChatCompletion(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
 	if c.apiKey == "" || c.apiKey == "your-qwen-api-key" {
 		return nil, fmt.Errorf("QWEN_API_KEY is not configured — set a real DashScope API key in your .env file")
@@ -117,15 +113,12 @@ func (c *QwenClient) GenerateChatCompletion(ctx context.Context, req ChatRequest
 		temperature = req.Temperature
 	}
 
-	body := qwenChatRequest{
-		Model: c.model,
-		Input: qwenInput{Messages: req.Messages},
-		Parameters: qwenChatParameters{
-			ResultFormat: "message",
-			MaxTokens:    maxTokens,
-			Temperature:  temperature,
-			TopP:         0.8,
-		},
+	body := openAIChatRequest{
+		Model:       c.model,
+		Messages:    req.Messages,
+		MaxTokens:   maxTokens,
+		Temperature: temperature,
+		TopP:        0.8,
 	}
 
 	bodyBytes, err := json.Marshal(body)
@@ -136,7 +129,7 @@ func (c *QwenClient) GenerateChatCompletion(ctx context.Context, req ChatRequest
 	start := time.Now()
 
 	var (
-		resp    *qwenChatResponse
+		resp    *openAIChatResponse
 		attempt int
 	)
 
@@ -174,11 +167,11 @@ func (c *QwenClient) GenerateChatCompletion(ctx context.Context, req ChatRequest
 
 	latency := int(time.Since(start).Milliseconds())
 
-	if len(resp.Output.Choices) == 0 {
-		return nil, fmt.Errorf("qwen returned no choices (code: %s, msg: %s)", resp.Code, resp.Message)
+	if len(resp.Choices) == 0 {
+		return nil, fmt.Errorf("qwen returned no choices")
 	}
 
-	choice := resp.Output.Choices[0]
+	choice := resp.Choices[0]
 
 	c.log.Info("qwen chat completed",
 		zap.Int("tokens_total", resp.Usage.TotalTokens),
@@ -195,8 +188,9 @@ func (c *QwenClient) GenerateChatCompletion(ctx context.Context, req ChatRequest
 	}, nil
 }
 
-func (c *QwenClient) doRequest(ctx context.Context, body []byte) (*qwenChatResponse, error) {
-	url := c.baseURL + "/services/aigc/text-generation/generation"
+func (c *QwenClient) doRequest(ctx context.Context, body []byte) (*openAIChatResponse, error) {
+	// OpenAI-compatible endpoint on DashScope international
+	url := c.baseURL + "/chat/completions"
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
@@ -205,7 +199,6 @@ func (c *QwenClient) doRequest(ctx context.Context, body []byte) (*qwenChatRespo
 
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("X-DashScope-SSE", "disable")
 
 	httpResp, err := c.httpClient.Do(httpReq)
 	if err != nil {
@@ -222,14 +215,14 @@ func (c *QwenClient) doRequest(ctx context.Context, body []byte) (*qwenChatRespo
 		return nil, fmt.Errorf("qwen http %d: %s", httpResp.StatusCode, string(respBytes))
 	}
 
-	var result qwenChatResponse
+	var result openAIChatResponse
 	if err := json.Unmarshal(respBytes, &result); err != nil {
 		return nil, fmt.Errorf("decoding qwen response: %w", err)
 	}
 
-	// DashScope encodes API-level errors inside the response body
-	if result.Code != "" && result.Code != "200" {
-		return nil, fmt.Errorf("qwen api error %s: %s", result.Code, result.Message)
+	// OpenAI-compatible error field
+	if result.Error != nil {
+		return nil, fmt.Errorf("qwen api error %s: %s", result.Error.Code, result.Error.Message)
 	}
 
 	return &result, nil
