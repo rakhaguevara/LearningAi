@@ -161,6 +161,11 @@ function StructuredAnswer({ msg }: { msg: Message }) {
 
 // Illustration with fade-in and zoom-on-hover
 function IllustrationImage({ url }: { url: string }) {
+    // Use backend proxy to avoid CORS issues with external image URLs
+    const proxiedUrl = url.startsWith('http') 
+        ? `/ai/image-proxy/${encodeURIComponent(url)}`
+        : url;
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
@@ -170,13 +175,29 @@ function IllustrationImage({ url }: { url: string }) {
             style={{ maxWidth: '400px' }}
         >
             <motion.img
-                src={url}
+                src={proxiedUrl}
                 alt="AI generated illustration"
                 loading="lazy"
                 whileHover={{ scale: 1.04 }}
                 transition={{ duration: 0.3 }}
                 className="w-full object-cover block"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    console.error('Failed to load image:', url);
+                    console.error('Proxied URL:', proxiedUrl);
+                    img.style.display = 'none';
+                    // Show fallback message
+                    const parent = img.parentElement;
+                    if (parent && !parent.querySelector('.image-error')) {
+                        const errorMsg = document.createElement('div');
+                        errorMsg.className = 'image-error p-4 text-center text-sm text-red-400 bg-red-500/10';
+                        errorMsg.textContent = '⚠️ Image failed to load. The illustration URL may have expired.';
+                        parent.appendChild(errorMsg);
+                    }
+                }}
+                onLoad={() => {
+                    console.log('Image loaded successfully:', proxiedUrl);
+                }}
             />
             <div className="px-3 py-1.5 bg-violet-500/10 flex items-center gap-1.5">
                 <span className="text-[10px] text-violet-400">✨ AI-generated illustration</span>

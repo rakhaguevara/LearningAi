@@ -216,6 +216,12 @@ func (g *PPTGenerator) writePPTX(path, topic string, slides []Slide) error {
 		return fmt.Errorf("writing pptx alias: %w", err)
 	}
 
+	g.log.Info("PPT files written successfully",
+		zap.String("html_path", htmlPath),
+		zap.String("pptx_path", path),
+		zap.Int("slides", len(slides)),
+	)
+
 	return nil
 }
 

@@ -2,7 +2,9 @@ package ai
 
 import (
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -202,8 +204,23 @@ func (h *Handler) DownloadPPT(c *gin.Context) {
 	safeName := sanitisePathSegment(filename)
 	path := filepath.Join("/tmp/ailearn/ppt", sanitisePathSegment(userIDParam), safeName)
 
+	// Check if file exists
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		return
+	}
+
+	// Determine content type based on file extension
+	ext := strings.ToLower(filepath.Ext(filename))
+	contentType := "text/html; charset=utf-8"
+	if ext == ".pptx" {
+		contentType = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+	} else if ext == ".html" {
+		contentType = "text/html; charset=utf-8"
+	}
+
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
-	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.Header("Content-Type", contentType)
 	c.File(path)
 }
 
@@ -268,10 +285,18 @@ func (h *Handler) DownloadAudio(c *gin.Context) {
 		sanitisePathSegment(userIDParam),
 		sanitisePathSegment(filename))
 
+	// Check if file exists
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		return
+	}
+
 	ext := strings.ToLower(filepath.Ext(filename))
 	mimeType := "audio/mpeg"
 	if ext == ".wav" {
 		mimeType = "audio/wav"
+	} else if ext == ".mp3" {
+		mimeType = "audio/mpeg"
 	}
 
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
@@ -350,6 +375,66 @@ func (h *Handler) GetOutputFormats(c *gin.Context) {
 		formats = append(formats, gin.H{"id": string(k), "label": v})
 	}
 	response.OK(c, gin.H{"formats": formats})
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /ai/image-proxy/*url - Proxy image requests to avoid CORS issues
+// ──────────────────────────────────────────────────────────────────────────────
+
+func (h *Handler) ImageProxy(c *gin.Context) {
+	imageURL := c.Param("url")
+
+	if imageURL == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image URL required"})
+		return
+	}
+
+	// Validate URL starts with http/https
+	if !strings.HasPrefix(imageURL, "http://") && !strings.HasPrefix(imageURL, "https://") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid URL format"})
+		return
+	}
+
+	h.log.Info("proxying_image_request", zap.String("url", imageURL))
+
+	// Fetch the image
+	resp, err := http.Get(imageURL)
+	if err != nil {
+		h.log.Error("failed_to_fetch_image", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch image"})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		h.log.Warn("image_fetch_failed",
+			zap.String("url", imageURL),
+			zap.Int("status", resp.StatusCode),
+		)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "failed to fetch image from source"})
+		return
+	}
+
+	// Set appropriate headers
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "image/png" // default
+	}
+
+	c.Header("Content-Type", contentType)
+	c.Header("Cache-Control", "public, max-age=3600")
+	c.Header("Access-Control-Allow-Origin", "*")
+
+	// Stream the image
+	c.Data(http.StatusOK, contentType, mustReadAll(resp.Body))
+}
+
+func mustReadAll(r io.Reader) []byte {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return []byte{}
+	}
+	return data
 }
 
 // dummy for strconv usage

@@ -115,6 +115,9 @@ func Setup(router *gin.Engine, db *sql.DB, cfg *config.Config, log *zap.Logger) 
 			aiGroup.POST("/generate-audio", aiHandler.GenerateAudio)
 			aiGroup.POST("/translate", aiHandler.Translate)
 
+			// Image proxy to avoid CORS issues
+			aiGroup.GET("/image-proxy/*url", aiHandler.ImageProxy)
+
 			// Downloads (user-scoped, path-safe)
 			aiGroup.GET("/download/ppt/:user_id/:filename", aiHandler.DownloadPPT)
 			aiGroup.GET("/download/audio/:user_id/:filename", aiHandler.DownloadAudio)

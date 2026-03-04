@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -45,33 +46,39 @@ func NewAIImageService(apiKey, imageModel, ossEndpoint, ossBucket, ossKeyID, oss
 // Returns the public OSS URL of the image.
 func (s *AIImageService) GenerateImage(ctx context.Context, prompt string) (*ImageResult, error) {
 	if s.apiKey == "" {
+		s.log.Warn("image_generation_skipped_no_api_key")
 		return nil, fmt.Errorf("API key not configured in AIImageService")
 	}
 
 	start := time.Now()
-	s.log.Info("image_generation_triggered",
+	s.log.Info("image_generation_started",
 		zap.String("image_model", s.imageModel),
-		zap.String("image_prompt", truncate(prompt, 120)),
+		zap.String("image_prompt_preview", truncate(prompt, 120)),
 	)
 
 	imageURL, err := s.callDashscopeImageAPI(ctx, prompt)
 	if err != nil {
 		durationMs := int(time.Since(start).Milliseconds())
-		s.log.Warn("image_generation_failed",
+		s.log.Error("image_generation_failed",
 			zap.String("image_error", err.Error()),
 			zap.Int("generation_duration", durationMs),
 		)
 		return &ImageResult{Fallback: true, FallbackMsg: err.Error()}, err
 	}
 
+	s.log.Info("dashscope_image_generated_successfully",
+		zap.String("generated_image_url", imageURL),
+		zap.Int("url_length", len(imageURL)),
+	)
+
+	// Try to upload to OSS if configured, but return DashScope URL even if OSS fails
 	ossURL, err := s.downloadAndUploadToOSS(ctx, imageURL)
 	if err != nil {
-		durationMs := int(time.Since(start).Milliseconds())
-		s.log.Warn("image_persistence_failed",
-			zap.String("image_error", err.Error()),
-			zap.Int("generation_duration", durationMs),
+		s.log.Warn("oss_upload_failed_returning_dashscope_url",
+			zap.String("dashscope_url", imageURL),
+			zap.String("oss_error", err.Error()),
 		)
-		// Still return the generated URL even if upload failed, it's valid for 24 hours.
+		// Return the original DashScope URL which is valid for 24 hours
 		return &ImageResult{
 			ImageURL:    imageURL,
 			Model:       s.imageModel,
@@ -82,8 +89,8 @@ func (s *AIImageService) GenerateImage(ctx context.Context, prompt string) (*Ima
 	}
 
 	durationMs := int(time.Since(start).Milliseconds())
-	s.log.Info("image_generation_complete",
-		zap.String("image_url", ossURL),
+	s.log.Info("image_uploaded_to_oss_successfully",
+		zap.String("oss_url", ossURL),
 		zap.String("image_model", s.imageModel),
 		zap.Int("generation_duration", durationMs),
 	)
@@ -137,6 +144,7 @@ func (s *AIImageService) callDashscopeImageAPI(ctx context.Context, prompt strin
 	}
 	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-DashScope-Async", "enable")
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -153,6 +161,7 @@ func (s *AIImageService) callDashscopeImageAPI(ctx context.Context, prompt strin
 
 	var result struct {
 		Output struct {
+			TaskID     string `json:"task_id"`
 			TaskStatus string `json:"task_status"`
 			Results    []struct {
 				URL string `json:"url"`
@@ -163,9 +172,10 @@ func (s *AIImageService) callDashscopeImageAPI(ctx context.Context, prompt strin
 	}
 
 	if err := json.Unmarshal(bodyBytesRes, &result); err != nil {
-		return "", fmt.Errorf("decoding image response: %w", err)
+		return "", fmt.Errorf("decoding image response: %w (raw: %s)", err, truncate(string(bodyBytesRes), 200))
 	}
 
+	// Check for API-level errors
 	if result.Code != "" || result.Message != "" {
 		s.log.Error("dashscope_api_error_returned",
 			zap.String("code", result.Code),
@@ -175,11 +185,119 @@ func (s *AIImageService) callDashscopeImageAPI(ctx context.Context, prompt strin
 		return "", fmt.Errorf("API error: %s - %s", result.Code, result.Message)
 	}
 
-	if len(result.Output.Results) == 0 {
-		return "", fmt.Errorf("no visual result in API response")
+	// Validate task ID
+	if result.Output.TaskID == "" {
+		return "", fmt.Errorf("no task_id in response")
 	}
 
-	return result.Output.Results[0].URL, nil
+	s.log.Info("image_task_submitted",
+		zap.String("task_id", result.Output.TaskID),
+		zap.String("task_status", result.Output.TaskStatus),
+	)
+
+	// Poll for task completion
+	imageURL, err := s.pollTask(ctx, result.Output.TaskID)
+	if err != nil {
+		return "", fmt.Errorf("polling task failed: %w", err)
+	}
+
+	if imageURL == "" {
+		return "", fmt.Errorf("empty image URL in results")
+	}
+
+	s.log.Info("image_url_extracted",
+		zap.String("image_url", imageURL),
+		zap.Int("url_length", len(imageURL)),
+	)
+
+	return imageURL, nil
+}
+
+// pollTask polls the DashScope task endpoint until completion
+func (s *AIImageService) pollTask(ctx context.Context, taskID string) (string, error) {
+	deadline := time.Now().Add(65 * time.Second)
+	queryURL := "https://dashscope-intl.aliyuncs.com/api/v1/tasks/" + taskID
+
+	for {
+		if time.Now().After(deadline) {
+			return "", fmt.Errorf("task timed out after 65s (task_id: %s)", taskID)
+		}
+
+		select {
+		case <-ctx.Done():
+			return "", fmt.Errorf("context cancelled while polling task %s", taskID)
+		case <-time.After(3 * time.Second):
+		}
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, queryURL, nil)
+		if err != nil {
+			s.log.Warn("task poll build request error", zap.Error(err))
+			continue
+		}
+		req.Header.Set("Authorization", "Bearer "+s.apiKey)
+
+		resp, err := s.client.Do(req)
+		if err != nil {
+			s.log.Warn("task poll http error", zap.String("task_id", taskID), zap.Error(err))
+			continue
+		}
+
+		data, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		resp.Body.Close()
+
+		s.log.Debug("task poll response",
+			zap.String("task_id", taskID),
+			zap.Int("status", resp.StatusCode),
+			zap.String("body", truncate(string(data), 400)),
+		)
+
+		var result struct {
+			Output struct {
+				TaskStatus string `json:"task_status"`
+				Results    []struct {
+					URL  string `json:"url"`
+					Code string `json:"code"`
+				} `json:"results"`
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			} `json:"output"`
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		}
+
+		if err := json.Unmarshal(data, &result); err != nil {
+			s.log.Warn("task poll unmarshal error", zap.Error(err))
+			continue
+		}
+
+		s.log.Debug("task poll status",
+			zap.String("task_id", taskID),
+			zap.String("task_status", result.Output.TaskStatus),
+		)
+
+		switch result.Output.TaskStatus {
+		case "SUCCEEDED":
+			if len(result.Output.Results) == 0 {
+				return "", fmt.Errorf("task SUCCEEDED but no results returned (task_id: %s)", taskID)
+			}
+			imageURL := strings.TrimSpace(result.Output.Results[0].URL)
+			if imageURL == "" {
+				return "", fmt.Errorf("task SUCCEEDED but image URL is empty (task_id: %s)", taskID)
+			}
+			s.log.Info("task_succeeded_with_url",
+				zap.String("task_id", taskID),
+				zap.String("image_url", imageURL),
+			)
+			return imageURL, nil
+
+		case "FAILED":
+			return "", fmt.Errorf("task FAILED: %s (task_id: %s)", result.Output.Message, taskID)
+
+		default:
+			// PENDING / RUNNING — keep polling
+			s.log.Debug("task still running", zap.String("status", result.Output.TaskStatus))
+		}
+	}
 }
 
 func (s *AIImageService) downloadAndUploadToOSS(ctx context.Context, imageURL string) (string, error) {
