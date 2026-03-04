@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -387,6 +388,15 @@ func (h *Handler) ImageProxy(c *gin.Context) {
 	if imageURL == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "image URL required"})
 		return
+	}
+
+	// Gin wildcard *url captures with a leading "/", strip it
+	imageURL = strings.TrimPrefix(imageURL, "/")
+
+	// URL-decode in case the frontend sent encodeURIComponent(url)
+	decoded, decErr := url.QueryUnescape(imageURL)
+	if decErr == nil {
+		imageURL = decoded
 	}
 
 	// Validate URL starts with http/https

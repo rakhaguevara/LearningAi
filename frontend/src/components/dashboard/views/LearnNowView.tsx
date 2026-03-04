@@ -162,8 +162,9 @@ function StructuredAnswer({ msg }: { msg: Message }) {
 // Illustration with fade-in and zoom-on-hover
 function IllustrationImage({ url }: { url: string }) {
     // Use backend proxy to avoid CORS issues with external image URLs
-    const proxiedUrl = url.startsWith('http') 
-        ? `/ai/image-proxy/${encodeURIComponent(url)}`
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    const proxiedUrl = url.startsWith('http')
+        ? `${apiBase}/ai/image-proxy/${encodeURIComponent(url)}`
         : url;
 
     return (

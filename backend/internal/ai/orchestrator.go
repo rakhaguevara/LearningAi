@@ -171,61 +171,101 @@ func (o *AIOrchestrator) GenerateStructured(
 	// ── Step 3: Image generation ──────────────────────────────────────────────
 	final.IllustrationURL = ""
 
+	// Extract all image generation fields from the tutor JSON response
 	scenePrompt := ""
+	imageStyle := ""
+	negativePrompt := ""
+	var diagramLabels []string
+
 	var rawMap map[string]interface{}
 	if err := json.Unmarshal([]byte(final.RawJSON), &rawMap); err == nil {
 		if v, ok := rawMap["visual_scene_prompt"].(string); ok {
 			scenePrompt = strings.TrimSpace(v)
 		}
+		if v, ok := rawMap["image_style"].(string); ok {
+			imageStyle = strings.TrimSpace(v)
+		}
+		if v, ok := rawMap["negative_prompt"].(string); ok {
+			negativePrompt = strings.TrimSpace(v)
+		}
+		if v, ok := rawMap["diagram_labels"].([]interface{}); ok {
+			for _, lbl := range v {
+				if s, ok := lbl.(string); ok && s != "" {
+					diagramLabels = append(diagramLabels, s)
+				}
+			}
+		}
 	}
+
+	o.log.Info("image_generation_fields_extracted",
+		zap.String("scene_prompt_preview", truncate(scenePrompt, 100)),
+		zap.String("image_style", imageStyle),
+		zap.String("negative_prompt_preview", truncate(negativePrompt, 50)),
+		zap.Int("diagram_labels_count", len(diagramLabels)),
+	)
 
 	if scenePrompt == "" {
 		o.log.Warn("image_generation_fallback_triggered",
 			zap.String("reason", "visual_scene_prompt missing from generated JSON"),
 			zap.String("topic_fallback", topic),
 		)
-		// Fallback to generating an image based on the topic alone.
-		scenePrompt = fmt.Sprintf("educational physics illustration of %s showing clear visual representation", coalesce(topic, "the physics concept previously discussed"))
+		// Fallback: construct minimal scene prompt from topic
+		scenePrompt = fmt.Sprintf("educational illustration showing %s with clear labeled components", coalesce(topic, "the concept previously discussed"))
 	}
 
-	if scenePrompt != "" && o.imageGen != nil {
+	if o.imageGen != nil {
+		// Build fully enhanced image generation input via the prompt enhancer
+		imgInput := BuildImageGenerationInput(scenePrompt, imageStyle, negativePrompt, diagramLabels, topic)
+
 		o.log.Info("image_generation_triggered",
 			zap.String("format", string(format)),
-			zap.String("image_prompt", truncate(scenePrompt, 120)),
+			zap.String("style", imgInput.Style),
+			zap.String("final_prompt_preview", truncate(imgInput.FinalPrompt, 150)),
+			zap.String("negative_prompt_preview", truncate(imgInput.NegativePrompt, 80)),
 		)
 
-		if scenePrompt != "" {
-			imgCtx, imgCancel := context.WithTimeout(context.Background(), 80*time.Second)
-			defer imgCancel()
+		imgCtx, imgCancel := context.WithTimeout(context.Background(), 80*time.Second)
+		defer imgCancel()
 
-			imgStart := time.Now()
-			imgResult, err := o.imageGen.GenerateImage(imgCtx, scenePrompt)
-			imgDuration := int(time.Since(imgStart).Milliseconds())
+		imgStart := time.Now()
+		imgResult, err := o.imageGen.GenerateImageFromInput(imgCtx, imgInput)
+		imgDuration := int(time.Since(imgStart).Milliseconds())
 
-			if err == nil && imgResult != nil && !imgResult.Fallback {
-				final.IllustrationURL = strings.TrimSpace(imgResult.ImageURL)
-				o.log.Info("image_generation_complete",
-					zap.String("image_url", final.IllustrationURL),
-					zap.Int("image_generation_duration", imgDuration),
-					zap.Bool("fallback_triggered", false),
-				)
-			} else {
-				errMsg := "unknown error"
-				if err != nil {
-					errMsg = err.Error()
-				} else if imgResult != nil {
-					errMsg = imgResult.FallbackMsg
-				}
-				o.log.Warn("image_generation_fallback",
-					zap.Bool("fallback_triggered", true),
-					zap.String("image_error", errMsg),
-					zap.Int("image_generation_duration", imgDuration),
-				)
-			}
+		// Log detailed result information
+		if imgResult != nil {
+			o.log.Info("image_generation_result_received",
+				zap.Bool("has_result", true),
+				zap.Bool("result_fallback", imgResult.Fallback),
+				zap.String("fallback_msg", imgResult.FallbackMsg),
+				zap.String("image_url", imgResult.ImageURL),
+				zap.Int("duration_ms", imgResult.DurationMs),
+			)
 		} else {
-			// This shouldn't happen with the fallback, but keeping as a safeguard
-			o.log.Warn("image_generation_skipped — no visual_scene_prompt and no fallback possible",
-				zap.String("format", string(format)),
+			o.log.Warn("image_generation_result_nil",
+				zap.Bool("has_result", false),
+				zap.Error(err),
+			)
+		}
+
+		if err == nil && imgResult != nil && !imgResult.Fallback {
+			final.IllustrationURL = strings.TrimSpace(imgResult.ImageURL)
+			o.log.Info("image_generation_complete",
+				zap.String("image_url", final.IllustrationURL),
+				zap.Int("image_generation_duration", imgDuration),
+				zap.Bool("fallback_triggered", false),
+			)
+		} else {
+			errMsg := "unknown error"
+			if err != nil {
+				errMsg = err.Error()
+			} else if imgResult != nil {
+				errMsg = imgResult.FallbackMsg
+			}
+			o.log.Warn("image_generation_fallback",
+				zap.Bool("fallback_triggered", true),
+				zap.String("image_error", errMsg),
+				zap.Int("image_generation_duration", imgDuration),
+				zap.String("error_summary", fmt.Sprintf("Image gen failed: %s", errMsg)),
 			)
 		}
 	} else {

@@ -211,7 +211,7 @@ func (s *AIService) Ask(ctx context.Context, userID uuid.UUID, req AskRequest) (
 
 		promptCtx := topic
 		if promptCtx == "" || promptCtx == "general" {
-			promptCtx = "the physics concept previously discussed"
+			promptCtx = "the concept previously discussed"
 			if len(historyMessages) > 0 {
 				lastMsg := historyMessages[len(historyMessages)-1].Content
 				var parsed map[string]interface{}
@@ -227,13 +227,24 @@ func (s *AIService) Ask(ctx context.Context, userID uuid.UUID, req AskRequest) (
 			}
 		}
 
-		imagePrompt := fmt.Sprintf("educational physics illustration of %s showing clear visual representation", promptCtx)
-		s.log.Info("direct_image_prompt_constructed", zap.String("image_prompt", imagePrompt))
+		// Build a descriptive base scene prompt, then run through the enhancer
+		rawScenePrompt := fmt.Sprintf(
+			"Educational illustration of %s. "+
+				"Show the concept clearly with labeled components, arrows indicating relationships, "+
+				"and a clean white background. Bright flat colors, educational clarity.",
+			promptCtx,
+		)
+
+		imgInput := BuildImageGenerationInput(rawScenePrompt, "flat_educational", "", nil, promptCtx)
+		s.log.Info("direct_image_input_built",
+			zap.String("style", imgInput.Style),
+			zap.String("final_prompt_preview", truncate(imgInput.FinalPrompt, 150)),
+		)
 
 		imgCtx, imgCancel := context.WithTimeout(context.Background(), 80*time.Second)
 		defer imgCancel()
 
-		imgResult, err := s.imageGen.GenerateImage(imgCtx, imagePrompt)
+		imgResult, err := s.imageGen.GenerateImageFromInput(imgCtx, imgInput)
 		if err == nil && imgResult != nil && !imgResult.Fallback {
 			return &AskResponse{
 				Answer:          "Berikut adalah ilustrasi yang kamu minta:",

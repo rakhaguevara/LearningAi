@@ -45,25 +45,39 @@ func NewAIImageService(apiKey, imageModel, ossEndpoint, ossBucket, ossKeyID, oss
 // GenerateImage submits a text-to-image task to qwen-image-plus, downloads the image, and uploads it to OSS.
 // Returns the public OSS URL of the image.
 func (s *AIImageService) GenerateImage(ctx context.Context, prompt string) (*ImageResult, error) {
+	input := ImageGenerationInput{
+		FinalPrompt:    prompt,
+		NegativePrompt: DefaultNegativePrompt,
+		Style:          "flat_educational",
+	}
+	return s.GenerateImageFromInput(ctx, input)
+}
+
+// GenerateImageFromInput is the preferred entry-point. It uses a fully-prepared
+// ImageGenerationInput (enhanced prompt + negative prompt + style).
+func (s *AIImageService) GenerateImageFromInput(ctx context.Context, input ImageGenerationInput) (*ImageResult, error) {
 	if s.apiKey == "" {
 		s.log.Warn("image_generation_skipped_no_api_key")
-		return nil, fmt.Errorf("API key not configured in AIImageService")
+		return &ImageResult{Fallback: true, FallbackMsg: "API key not configured in AIImageService"}, nil
 	}
 
 	start := time.Now()
 	s.log.Info("image_generation_started",
 		zap.String("image_model", s.imageModel),
-		zap.String("image_prompt_preview", truncate(prompt, 120)),
+		zap.String("style", input.Style),
+		zap.String("image_prompt_preview", truncate(input.FinalPrompt, 150)),
+		zap.String("negative_prompt_preview", truncate(input.NegativePrompt, 80)),
 	)
 
-	imageURL, err := s.callDashscopeImageAPI(ctx, prompt)
+	imageURL, err := s.callDashscopeImageAPI(ctx, input.FinalPrompt, input.NegativePrompt)
 	if err != nil {
 		durationMs := int(time.Since(start).Milliseconds())
 		s.log.Error("image_generation_failed",
 			zap.String("image_error", err.Error()),
 			zap.Int("generation_duration", durationMs),
 		)
-		return &ImageResult{Fallback: true, FallbackMsg: err.Error()}, err
+		// Return fallback result but don't return error - allows orchestrator to continue
+		return &ImageResult{Fallback: true, FallbackMsg: err.Error(), DurationMs: durationMs}, nil
 	}
 
 	s.log.Info("dashscope_image_generated_successfully",
@@ -71,32 +85,50 @@ func (s *AIImageService) GenerateImage(ctx context.Context, prompt string) (*Ima
 		zap.Int("url_length", len(imageURL)),
 	)
 
-	// Try to upload to OSS if configured, but return DashScope URL even if OSS fails
-	ossURL, err := s.downloadAndUploadToOSS(ctx, imageURL)
-	if err != nil {
-		s.log.Warn("oss_upload_failed_returning_dashscope_url",
-			zap.String("dashscope_url", imageURL),
-			zap.String("oss_error", err.Error()),
+	// Try to upload to OSS if configured, but ALWAYS return the DashScope URL even if OSS fails
+	if s.ossEndpoint != "" && s.ossBucket != "" && s.ossKeyID != "" && s.ossSecret != "" {
+		ossURL, ossErr := s.downloadAndUploadToOSS(ctx, imageURL)
+		if ossErr != nil {
+			s.log.Warn("oss_upload_failed_returning_dashscope_url",
+				zap.String("dashscope_url", imageURL),
+				zap.String("oss_error", ossErr.Error()),
+			)
+			// Return the original DashScope URL which is valid for 24 hours
+			return &ImageResult{
+				ImageURL:    imageURL,
+				Model:       s.imageModel,
+				GeneratedAt: time.Now(),
+				DurationMs:  int(time.Since(start).Milliseconds()),
+				Fallback:    false,
+			}, nil
+		}
+
+		durationMs := int(time.Since(start).Milliseconds())
+		s.log.Info("image_uploaded_to_oss_successfully",
+			zap.String("oss_url", ossURL),
+			zap.String("image_model", s.imageModel),
+			zap.Int("generation_duration", durationMs),
 		)
-		// Return the original DashScope URL which is valid for 24 hours
+
 		return &ImageResult{
-			ImageURL:    imageURL,
+			ImageURL:    ossURL,
 			Model:       s.imageModel,
 			GeneratedAt: time.Now(),
-			DurationMs:  int(time.Since(start).Milliseconds()),
+			DurationMs:  durationMs,
 			Fallback:    false,
 		}, nil
 	}
 
+	// OSS not configured - return DashScope URL directly
 	durationMs := int(time.Since(start).Milliseconds())
-	s.log.Info("image_uploaded_to_oss_successfully",
-		zap.String("oss_url", ossURL),
+	s.log.Info("image_generation_complete_using_dashscope_url",
+		zap.String("dashscope_url", imageURL),
 		zap.String("image_model", s.imageModel),
 		zap.Int("generation_duration", durationMs),
 	)
 
 	return &ImageResult{
-		ImageURL:    ossURL,
+		ImageURL:    imageURL,
 		Model:       s.imageModel,
 		GeneratedAt: time.Now(),
 		DurationMs:  durationMs,
@@ -104,11 +136,12 @@ func (s *AIImageService) GenerateImage(ctx context.Context, prompt string) (*Ima
 	}, nil
 }
 
-func (s *AIImageService) callDashscopeImageAPI(ctx context.Context, prompt string) (string, error) {
+func (s *AIImageService) callDashscopeImageAPI(ctx context.Context, prompt string, negativePrompt string) (string, error) {
 	url := "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis"
 
 	type taskInput struct {
-		Prompt string `json:"prompt"`
+		Prompt         string `json:"prompt"`
+		NegativePrompt string `json:"negative_prompt,omitempty"`
 	}
 	type taskParams struct {
 		Size         string `json:"size"`
@@ -124,7 +157,10 @@ func (s *AIImageService) callDashscopeImageAPI(ctx context.Context, prompt strin
 
 	body := taskBody{
 		Model: s.imageModel,
-		Input: taskInput{Prompt: prompt},
+		Input: taskInput{
+			Prompt:         prompt,
+			NegativePrompt: negativePrompt,
+		},
 		Parameters: taskParams{
 			Size:         "1664*928",
 			N:            1,
@@ -146,6 +182,12 @@ func (s *AIImageService) callDashscopeImageAPI(ctx context.Context, prompt strin
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-DashScope-Async", "enable")
 
+	s.log.Info("submitting_image_request_to_dashscope",
+		zap.String("url", url),
+		zap.String("model", s.imageModel),
+		zap.String("prompt_preview", truncate(prompt, 100)),
+	)
+
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("image generation http call: %w", err)
@@ -156,7 +198,11 @@ func (s *AIImageService) callDashscopeImageAPI(ctx context.Context, prompt strin
 	s.log.Debug("dashscope_image_raw_response", zap.String("raw_body", string(bodyBytesRes)))
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("image generation http %d: %s", resp.StatusCode, string(bodyBytesRes))
+		s.log.Error("dashscope_api_http_error",
+			zap.Int("status_code", resp.StatusCode),
+			zap.String("response_body", truncate(string(bodyBytesRes), 300)),
+		)
+		return "", fmt.Errorf("image generation HTTP %d: %s", resp.StatusCode, truncate(string(bodyBytesRes), 200))
 	}
 
 	var result struct {
@@ -187,10 +233,13 @@ func (s *AIImageService) callDashscopeImageAPI(ctx context.Context, prompt strin
 
 	// Validate task ID
 	if result.Output.TaskID == "" {
+		s.log.Error("no_task_id_in_response",
+			zap.String("raw_response", string(bodyBytesRes)),
+		)
 		return "", fmt.Errorf("no task_id in response")
 	}
 
-	s.log.Info("image_task_submitted",
+	s.log.Info("image_task_submitted_successfully",
 		zap.String("task_id", result.Output.TaskID),
 		zap.String("task_status", result.Output.TaskStatus),
 	)
@@ -198,14 +247,21 @@ func (s *AIImageService) callDashscopeImageAPI(ctx context.Context, prompt strin
 	// Poll for task completion
 	imageURL, err := s.pollTask(ctx, result.Output.TaskID)
 	if err != nil {
+		s.log.Error("polling_task_failed",
+			zap.String("task_id", result.Output.TaskID),
+			zap.Error(err),
+		)
 		return "", fmt.Errorf("polling task failed: %w", err)
 	}
 
 	if imageURL == "" {
+		s.log.Error("empty_image_url_in_results",
+			zap.String("task_id", result.Output.TaskID),
+		)
 		return "", fmt.Errorf("empty image URL in results")
 	}
 
-	s.log.Info("image_url_extracted",
+	s.log.Info("image_url_extracted_from_polling",
 		zap.String("image_url", imageURL),
 		zap.Int("url_length", len(imageURL)),
 	)
