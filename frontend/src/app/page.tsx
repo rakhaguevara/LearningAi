@@ -7,6 +7,7 @@ import { LearningFormatsSection } from "@/components/sections/LearningFormatsSec
 import { LearnersCarouselSection } from "@/components/sections/LearnersCarouselSection";
 import { DemoSection } from "@/components/sections/DemoSection";
 import { CTASection } from "@/components/sections/CTASection";
+import { FinalCTASection } from "@/components/sections/FinalCTASection";
 
 export default function Home() {
   return (
@@ -20,6 +21,7 @@ export default function Home() {
         <LearnersCarouselSection />
         <DemoSection />
         <CTASection />
+        <FinalCTASection />
       </main>
       <Footer />
     </>
