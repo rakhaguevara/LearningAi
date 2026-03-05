@@ -43,7 +43,7 @@ export function Navbar() {
       >
         <div
           className={cn(
-            "mx-auto max-w-7xl transition-all duration-300 ease-in-out",
+            "mx-auto w-full transition-all duration-300 ease-in-out",
             scrolled
               ? "px-6 lg:px-8 rounded-2xl shadow-md backdrop-blur-lg bg-slate-900/40 border border-white/10"
               : "px-6 lg:px-8 glass-strong"
