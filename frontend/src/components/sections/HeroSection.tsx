@@ -10,7 +10,7 @@ export function HeroSection() {
   const router = useRouter();
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+    <section className="relative min-h-[100dvh] flex flex-col justify-center overflow-hidden pt-32 pb-20 md:pt-40">
       {/* Background Orbs */}
       <FloatingIllustration
         variant="orb"
