@@ -141,14 +141,36 @@ func BuildSystemPrompt(cfg PromptBuilderConfig) string {
 	sb.WriteString("- diagram_labels: 2-5 short labels naming key visual elements in the scene\n")
 	sb.WriteString("- DO NOT mix explanation text into visual_scene_prompt — it must be a pure image description\n\n")
 
-	// RAG context injection (BEFORE schema so model has context when writing JSON)
+	sb.WriteString("CRITICAL RULES:\n\n")
+	sb.WriteString("1. Always prioritize information from the user's uploaded documents if context is provided.\n")
+	sb.WriteString("2. If document context exists, you MUST reference and use it in your explanation.\n")
+	sb.WriteString("3. Never say \"document not provided\" if context exists.\n")
+	sb.WriteString("4. If the user asks about the document, assume they refer to the uploaded sources.\n")
+	sb.WriteString("5. If the user asks for a picture, illustration, or visualization, you MUST generate a visual_scene_prompt.\n\n")
+
+	sb.WriteString("--------------------------------\n\nUSER CONTEXT\n\n")
+	sb.WriteString(fmt.Sprintf("Learning Style: %s\n", coalesce(cfg.LearningStyle, "adaptive")))
+	sb.WriteString(fmt.Sprintf("Interest: %s\n", coalesce(cfg.DominantInterest, "general")))
+	sb.WriteString(fmt.Sprintf("Explanation Depth: %s\n\n", coalesce(cfg.ExplanationDepth, "intermediate")))
+
+	sb.WriteString("--------------------------------\n\nDOCUMENT CONTEXT\n\n")
+	sb.WriteString("If the following section contains text, it comes from the user's uploaded materials and must be used to answer the question.\n\n")
 	if strings.TrimSpace(cfg.RetrievedContext) != "" {
-		sb.WriteString("## Context from user's uploaded materials:\n")
-		sb.WriteString("---\n")
-		sb.WriteString(cfg.RetrievedContext)
-		sb.WriteString("\n---\n")
-		sb.WriteString("Use the above context when forming your answer. If the answer is not in the context, say so clearly.\n\n")
+		sb.WriteString(cfg.RetrievedContext + "\n\n")
+	} else {
+		sb.WriteString("No document context provided for this query.\n\n")
 	}
+
+	sb.WriteString("--------------------------------\n\nIMAGE GENERATION RULE\n\n")
+	sb.WriteString("If the user asks for:\n\n- gambar\n- ilustrasi\n- visualisasi\n- diagram\n- picture\n- illustration\n- visualize\n- show me\n\nYou MUST generate a detailed visual_scene_prompt.\n\n")
+
+	sb.WriteString("--------------------------------\n\nTOPIC SAFETY\n\n")
+	sb.WriteString("Stay strictly within the topic the user asked.\n\nDo NOT change topics.\n\nExample:\nIf the user asks about Newton's First Law, do NOT switch to gravity.\n\n")
+
+	sb.WriteString("--------------------------------\n\nOUTPUT FORMAT\n\n")
+	sb.WriteString("You MUST return ONLY a valid JSON object.\n\nDo NOT include markdown.\n\nDo NOT include explanations outside JSON.\n\n")
+
+	sb.WriteString("--------------------------------\n\nSCHEMA\n\n")
 
 	// Strict schema per output format
 	switch cfg.OutputFormat {
@@ -163,7 +185,7 @@ func BuildSystemPrompt(cfg PromptBuilderConfig) string {
 	case OutputFormatAcademic:
 		sb.WriteString(schemaAcademic)
 	case OutputFormatSlides:
-		sb.WriteString(schemaPrefix + `Schema:
+		sb.WriteString(`Schema:
 {"slides":[{"title":"...","content":"...","speaker_notes":"..."}]}
 Rules: 5-8 slides. title ≤ 60 chars. content ≤ 200 chars bullet points. speaker_notes ≤ 300 chars.`)
 	case OutputFormatAudio:
@@ -174,6 +196,12 @@ Rules: 5-8 slides. title ≤ 60 chars. content ≤ 200 chars bullet points. spea
 	default:
 		sb.WriteString("Respond clearly and helpfully. No markdown unless necessary.\n")
 	}
+
+	sb.WriteString("\n\n--------------------------------\n\nVISUAL PROMPT QUALITY\n\n")
+	sb.WriteString("visual_scene_prompt must:\n\n- describe a clear scene\n- include objects and motion\n- include environment\n- be suitable for text-to-image generation\n- avoid abstract descriptions\n\nExample:\n\n\"A student pushing a heavy cart on a frictionless floor in a physics lab, demonstrating inertia as the cart continues moving after the push, bright educational environment, realistic lighting\"\n\n")
+
+	sb.WriteString("--------------------------------\n\nFAILSAFE\n\n")
+	sb.WriteString("If document context is empty, explain using physics knowledge.\n\nIf the user asks for an illustration, ALWAYS fill visual_scene_prompt.\n\nNever return empty fields.\n")
 
 	return sb.String()
 }
