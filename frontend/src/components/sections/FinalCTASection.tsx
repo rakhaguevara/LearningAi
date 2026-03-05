@@ -17,7 +17,7 @@ export function FinalCTASection() {
     return (
         <section
             ref={containerRef}
-            className="relative overflow-hidden w-full py-20 md:py-32 lg:py-40 flex flex-col items-center justify-center border-t border-white/5"
+            className="relative overflow-hidden w-full py-20 md:py-32 lg:py-40 flex flex-col items-center justify-center"
         >
             {/* --- ARC BACKGROUND ELEMENT --- */}
             <motion.div
