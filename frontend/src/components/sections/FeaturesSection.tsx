@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { SectionWrapper } from "@/components/ui/SectionWrapper";
 import { GradientCard } from "@/components/ui/GradientCard";
+import { FloatingIllustration } from "@/components/ui/FloatingIllustration";
 
 const features = [
   {
@@ -89,8 +90,15 @@ const containerVariants = {
 
 export function FeaturesSection() {
   return (
-    <SectionWrapper id="features">
-      <div className="text-center mb-16">
+    <SectionWrapper id="features" className="relative overflow-visible">
+      {/* Decorative background element */}
+      <FloatingIllustration
+        variant="ring"
+        color="purple"
+        size="lg"
+        className="absolute -left-32 top-10"
+      />
+      <div className="text-center mb-16 relative z-10">
         <motion.p
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}

@@ -31,9 +31,7 @@ const formats = [
 
 export function LearningFormatsSection() {
   return (
-    <section className="relative py-12 md:py-16 bg-slate-900/30 overflow-hidden">
-      {/* Subtle background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-800/20 to-transparent pointer-events-none" />
+    <section className="relative py-12 md:py-16 overflow-hidden">
 
       <div className="relative max-w-5xl mx-auto px-6">
         {/* Header */}

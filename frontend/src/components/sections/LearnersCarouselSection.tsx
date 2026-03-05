@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { FloatingIllustration } from "@/components/ui/FloatingIllustration";
 
 const learners = [
   {
@@ -97,10 +98,20 @@ export function LearnersCarouselSection() {
 
   return (
     <section className="relative py-16 md:py-24 overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 via-transparent to-slate-900/50 pointer-events-none" />
+      {/* Decorative Orbs */}
+      <FloatingIllustration
+        variant="orb"
+        color="pink"
+        size="lg"
+        className="absolute -left-20 top-1/4 opacity-20"
+      />
+      <FloatingIllustration
+        variant="dots"
+        color="cyan"
+        className="absolute right-10 top-1/2 opacity-30 hidden md:flex"
+      />
 
-      <div className="relative max-w-7xl mx-auto px-6">
+      <div className="relative z-10 max-w-7xl mx-auto px-6">
         {/* Header */}
         <div className="text-center mb-2 md:mb-4">
           <motion.p
