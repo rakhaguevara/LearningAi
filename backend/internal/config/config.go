@@ -25,6 +25,7 @@ type AppConfig struct {
 	Port        string
 	Secret      string
 	FrontendURL string
+	BaseURL     string // Base URL for constructing absolute URLs (e.g., http://localhost:8080)
 }
 
 type DBConfig struct {
@@ -106,6 +107,7 @@ func Load() (*Config, error) {
 			Port:        getEnv("APP_PORT", "8080"),
 			Secret:      getEnv("APP_SECRET", "change-me"),
 			FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
+			BaseURL:     getEnv("BASE_URL", "http://localhost:8080"),
 		},
 		DB: DBConfig{
 			Host:            getEnv("DB_HOST", "localhost"),

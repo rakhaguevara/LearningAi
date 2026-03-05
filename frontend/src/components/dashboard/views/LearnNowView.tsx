@@ -161,11 +161,26 @@ function StructuredAnswer({ msg }: { msg: Message }) {
 
 // Illustration with fade-in and zoom-on-hover
 function IllustrationImage({ url }: { url: string }) {
-    // Use backend proxy to avoid CORS issues with external image URLs
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-    const proxiedUrl = url.startsWith('http')
-        ? `${apiBase}/ai/image-proxy/${encodeURIComponent(url)}`
-        : url;
+    
+    // Determine the correct image URL:
+    // 1. If URL is already absolute and points to our backend, use it directly
+    // 2. If URL is relative (starts with /), prepend apiBase
+    // 3. If URL is absolute but external, use proxy to avoid CORS
+    let imageUrl: string;
+    if (url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) {
+        // Local backend URL - use directly (no proxy needed)
+        imageUrl = url;
+    } else if (url.startsWith('/')) {
+        // Relative URL - make absolute
+        imageUrl = `${apiBase}${url}`;
+    } else if (url.startsWith('http')) {
+        // External URL - use proxy to avoid CORS
+        imageUrl = `${apiBase}/ai/image-proxy/${encodeURIComponent(url)}`;
+    } else {
+        // Fallback - treat as relative
+        imageUrl = `${apiBase}${url}`;
+    }
 
     return (
         <motion.div
@@ -176,7 +191,7 @@ function IllustrationImage({ url }: { url: string }) {
             style={{ maxWidth: '400px' }}
         >
             <motion.img
-                src={proxiedUrl}
+                src={imageUrl}
                 alt="AI generated illustration"
                 loading="lazy"
                 whileHover={{ scale: 1.04 }}
@@ -185,7 +200,7 @@ function IllustrationImage({ url }: { url: string }) {
                 onError={(e) => {
                     const img = e.target as HTMLImageElement;
                     console.error('Failed to load image:', url);
-                    console.error('Proxied URL:', proxiedUrl);
+                    console.error('Image URL used:', imageUrl);
                     img.style.display = 'none';
                     // Show fallback message
                     const parent = img.parentElement;
@@ -197,7 +212,7 @@ function IllustrationImage({ url }: { url: string }) {
                     }
                 }}
                 onLoad={() => {
-                    console.log('Image loaded successfully:', proxiedUrl);
+                    console.log('Image loaded successfully:', imageUrl);
                 }}
             />
             <div className="px-3 py-1.5 bg-violet-500/10 flex items-center gap-1.5">

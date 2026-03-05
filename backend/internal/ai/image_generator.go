@@ -3,11 +3,14 @@ package ai
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"go.uber.org/zap"
@@ -38,19 +41,21 @@ type ImageResult struct {
 	DurationMs  int       `json:"duration_ms"`
 	Fallback    bool      `json:"fallback"` // true if no image could be generated
 	FallbackMsg string    `json:"fallback_msg,omitempty"`
+	LocalPath   string    `json:"local_path,omitempty"` // local file path if downloaded
 }
 
 // ImageGenerator calls DashScope Wanx API to create illustrations.
 type ImageGenerator struct {
-	apiKey  string
-	baseURL string // e.g. https://dashscope-intl.aliyuncs.com/api/v1
-	model   string
-	log     *zap.Logger
-	client  *http.Client
+	apiKey     string
+	baseURL    string // e.g. https://dashscope-intl.aliyuncs.com/api/v1
+	model      string
+	log        *zap.Logger
+	client     *http.Client
+	storageDir string // local directory to store generated images
 }
 
 // NewImageGenerator creates a production-grade image generator.
-func NewImageGenerator(apiKey, baseURL string, log *zap.Logger) *ImageGenerator {
+func NewImageGenerator(apiKey, baseURL, storageDir string, log *zap.Logger) *ImageGenerator {
 	model := os.Getenv("QWEN_IMAGE_MODEL")
 	if model == "" {
 		model = defaultImageModel
@@ -60,12 +65,22 @@ func NewImageGenerator(apiKey, baseURL string, log *zap.Logger) *ImageGenerator 
 	// because `wanx-v1` "Model not exist" occurs on the `-intl` subdomain.
 	imageURL := "https://dashscope.aliyuncs.com/api/v1"
 
+	// Ensure storage directory exists
+	if storageDir == "" {
+		storageDir = "/tmp/ailearn/generated-images"
+	}
+	if err := os.MkdirAll(storageDir, 0755); err != nil {
+		log.Warn("failed to create image storage directory", zap.Error(err))
+		storageDir = "" // disable local storage if we can't create the dir
+	}
+
 	return &ImageGenerator{
-		apiKey:  apiKey,
-		baseURL: imageURL,
-		model:   model,
-		log:     log,
-		client:  &http.Client{Timeout: 95 * time.Second},
+		apiKey:     apiKey,
+		baseURL:    imageURL,
+		model:      model,
+		log:        log,
+		client:     &http.Client{Timeout: 95 * time.Second},
+		storageDir: storageDir,
 	}
 }
 
@@ -147,12 +162,24 @@ func (g *ImageGenerator) GenerateImage(ctx context.Context, prompt string, style
 		zap.Bool("fallback_triggered", false),
 	)
 
+	// Download and save image locally if storage is enabled
+	localURL := ""
+	if g.storageDir != "" && imageURL != "" {
+		if localPath, err := g.downloadAndSaveImage(ctx, imageURL); err != nil {
+			g.log.Warn("image_download_failed", zap.Error(err))
+		} else {
+			localURL = localPath
+			g.log.Info("image_downloaded_successfully", zap.String("local_path", localPath))
+		}
+	}
+
 	return &ImageResult{
-		ImageURL:    imageURL,
+		ImageURL:    localURL, // Return local path if successful, otherwise remote URL
 		Model:       g.model,
 		GeneratedAt: time.Now(),
 		DurationMs:  durationMs,
 		Fallback:    false,
+		LocalPath:   localURL,
 	}
 }
 
@@ -345,6 +372,73 @@ func (g *ImageGenerator) pollTask(ctx context.Context, taskID string) (string, e
 			g.log.Debug("image task still running", zap.String("status", result.Output.TaskStatus))
 		}
 	}
+}
+
+// downloadAndSaveImage downloads the image from remote URL and saves it locally.
+// Returns the local URL path (e.g., /generated/ai-image-xxxx.png).
+func (g *ImageGenerator) downloadAndSaveImage(ctx context.Context, imageURL string) (string, error) {
+	if g.storageDir == "" {
+		return "", fmt.Errorf("storage directory not configured")
+	}
+
+	// Fetch the image
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, imageURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("creating download request: %w", err)
+	}
+
+	resp, err := g.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("downloading image: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("download failed with status %d", resp.StatusCode)
+	}
+
+	// Read image data
+	imgData, err := io.ReadAll(io.LimitReader(resp.Body, 20<<20)) // Max 20MB
+	if err != nil {
+		return "", fmt.Errorf("reading image data: %w", err)
+	}
+
+	// Determine file extension from Content-Type or default to .png
+	contentType := resp.Header.Get("Content-Type")
+	ext := ".png"
+	switch contentType {
+	case "image/jpeg", "image/jpg":
+		ext = ".jpg"
+	case "image/gif":
+		ext = ".gif"
+	case "image/webp":
+		ext = ".webp"
+	}
+
+	// Generate unique filename
+	filename := fmt.Sprintf("ai-image-%s%s", generateUniqueID(), ext)
+	filePath := filepath.Join(g.storageDir, filename)
+
+	// Save to disk
+	if err := os.WriteFile(filePath, imgData, 0644); err != nil {
+		return "", fmt.Errorf("saving image to disk: %w", err)
+	}
+
+	g.log.Info("image_saved_locally",
+		zap.String("file_path", filePath),
+		zap.Int("size_bytes", len(imgData)),
+	)
+
+	// Return URL-safe path (relative to server root)
+	// This will be served via static file middleware
+	return "/generated/" + filename, nil
+}
+
+// generateUniqueID creates a random hex string for unique filenames.
+func generateUniqueID() string {
+	b := make([]byte, 8)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 func truncate(s string, max int) string {

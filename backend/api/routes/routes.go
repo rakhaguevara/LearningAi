@@ -2,6 +2,8 @@ package routes
 
 import (
 	"database/sql"
+	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -44,6 +46,7 @@ func Setup(router *gin.Engine, db *sql.DB, cfg *config.Config, log *zap.Logger) 
 		cfg.OSS.Bucket,
 		cfg.OSS.AccessKeyID,
 		cfg.OSS.AccessKeySecret,
+		cfg.App.BaseURL,
 		log,
 	)
 
@@ -73,6 +76,13 @@ func Setup(router *gin.Engine, db *sql.DB, cfg *config.Config, log *zap.Logger) 
 	router.Use(mw.RequestLogger(log))
 	router.Use(mw.Recovery(log))
 	router.Use(rateLimiter.Middleware())
+
+	// ── Static Files ────────────────────────────────────
+	// Serve generated images from local storage (cross-platform)
+	// Windows: C:\Users\<user>\AppData\Local\Temp\ailearn\generated-images
+	// Linux/Mac: /tmp/ailearn/generated-images
+	imageStorageDir := filepath.Join(os.TempDir(), "ailearn", "generated-images")
+	router.Static("/generated", imageStorageDir)
 
 	// ── Health ───────────────────────────────────────────
 	router.GET("/health", func(c *gin.Context) {

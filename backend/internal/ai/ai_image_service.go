@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -16,7 +18,7 @@ import (
 )
 
 // AIImageService calls DashScope `qwen-image-plus` API to create illustrations
-// and uploads the results to Alibaba Cloud OSS.
+// and saves them to local storage.
 type AIImageService struct {
 	apiKey      string
 	imageModel  string
@@ -26,19 +28,36 @@ type AIImageService struct {
 	ossBucket   string
 	ossKeyID    string
 	ossSecret   string
+	storageDir  string // local directory to store generated images
+	baseURL     string // base URL for constructing absolute image URLs
 }
 
-// NewAIImageService creates a production-grade image generator and OSS uploader.
-func NewAIImageService(apiKey, imageModel, ossEndpoint, ossBucket, ossKeyID, ossSecret string, log *zap.Logger) *AIImageService {
+// NewAIImageService creates a production-grade image generator and local storage.
+func NewAIImageService(apiKey, imageModel, ossEndpoint, ossBucket, ossKeyID, ossSecret, baseURL string, log *zap.Logger) *AIImageService {
+	// Set up cross-platform local storage directory
+	// Windows: C:\Users\<user>\AppData\Local\Temp\ailearn\generated-images
+	// Linux/Mac: /tmp/ailearn/generated-images
+	storageDir := filepath.Join(os.TempDir(), "ailearn", "generated-images")
+	if err := os.MkdirAll(storageDir, 0755); err != nil {
+		log.Warn("failed to create image storage directory", zap.Error(err))
+		storageDir = ""
+	} else {
+		log.Info("image_storage_directory_initialized",
+			zap.String("storage_dir", storageDir),
+		)
+	}
+
 	return &AIImageService{
 		apiKey:      apiKey,
 		imageModel:  imageModel,
 		log:         log,
-		client:      &http.Client{Timeout: 60 * time.Second},
+		client:      &http.Client{Timeout: 90 * time.Second},
 		ossEndpoint: ossEndpoint,
 		ossBucket:   ossBucket,
 		ossKeyID:    ossKeyID,
 		ossSecret:   ossSecret,
+		storageDir:  storageDir,
+		baseURL:     baseURL,
 	}
 }
 
@@ -85,15 +104,15 @@ func (s *AIImageService) GenerateImageFromInput(ctx context.Context, input Image
 		zap.Int("url_length", len(imageURL)),
 	)
 
-	// Try to upload to OSS if configured, but ALWAYS return the DashScope URL even if OSS fails
-	if s.ossEndpoint != "" && s.ossBucket != "" && s.ossKeyID != "" && s.ossSecret != "" {
-		ossURL, ossErr := s.downloadAndUploadToOSS(ctx, imageURL)
-		if ossErr != nil {
-			s.log.Warn("oss_upload_failed_returning_dashscope_url",
+	// Download and save image locally (always do this to avoid URL expiration)
+	if s.storageDir != "" {
+		localURL, saveErr := s.downloadAndSaveImage(ctx, imageURL)
+		if saveErr != nil {
+			s.log.Warn("image_download_failed_returning_dashscope_url",
 				zap.String("dashscope_url", imageURL),
-				zap.String("oss_error", ossErr.Error()),
+				zap.String("download_error", saveErr.Error()),
 			)
-			// Return the original DashScope URL which is valid for 24 hours
+			// Return the original DashScope URL as fallback
 			return &ImageResult{
 				ImageURL:    imageURL,
 				Model:       s.imageModel,
@@ -104,22 +123,23 @@ func (s *AIImageService) GenerateImageFromInput(ctx context.Context, input Image
 		}
 
 		durationMs := int(time.Since(start).Milliseconds())
-		s.log.Info("image_uploaded_to_oss_successfully",
-			zap.String("oss_url", ossURL),
+		s.log.Info("image_saved_locally_successfully",
+			zap.String("local_url", localURL),
 			zap.String("image_model", s.imageModel),
 			zap.Int("generation_duration", durationMs),
 		)
 
 		return &ImageResult{
-			ImageURL:    ossURL,
+			ImageURL:    localURL,
 			Model:       s.imageModel,
 			GeneratedAt: time.Now(),
 			DurationMs:  durationMs,
 			Fallback:    false,
+			LocalPath:   localURL,
 		}, nil
 	}
 
-	// OSS not configured - return DashScope URL directly
+	// Fallback: storage not configured - return DashScope URL directly
 	durationMs := int(time.Since(start).Milliseconds())
 	s.log.Info("image_generation_complete_using_dashscope_url",
 		zap.String("dashscope_url", imageURL),
@@ -354,6 +374,81 @@ func (s *AIImageService) pollTask(ctx context.Context, taskID string) (string, e
 			s.log.Debug("task still running", zap.String("status", result.Output.TaskStatus))
 		}
 	}
+}
+
+// downloadAndSaveImage downloads the image from DashScope and saves it to local storage.
+// Returns an absolute URL like http://localhost:8080/generated/ai-image-xxxx.png
+func (s *AIImageService) downloadAndSaveImage(ctx context.Context, imageURL string) (string, error) {
+	if s.storageDir == "" {
+		return "", fmt.Errorf("storage directory not configured")
+	}
+
+	// Fetch the image
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, imageURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("creating download request: %w", err)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("downloading image: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("download failed with status %d", resp.StatusCode)
+	}
+
+	// Read image data (max 20MB)
+	imgData, err := io.ReadAll(io.LimitReader(resp.Body, 20<<20))
+	if err != nil {
+		return "", fmt.Errorf("reading image data: %w", err)
+	}
+
+	// Determine file extension from Content-Type
+	contentType := resp.Header.Get("Content-Type")
+	ext := ".png"
+	switch contentType {
+	case "image/jpeg", "image/jpg":
+		ext = ".jpg"
+	case "image/gif":
+		ext = ".gif"
+	case "image/webp":
+		ext = ".webp"
+	}
+
+	// Generate unique filename using timestamp and random suffix
+	filename := fmt.Sprintf("ai-image-%d-%s%s", time.Now().UnixNano(), uuid.New().String()[:8], ext)
+	filePath := filepath.Join(s.storageDir, filename)
+
+	// Save to disk
+	if err := os.WriteFile(filePath, imgData, 0644); err != nil {
+		return "", fmt.Errorf("saving image to disk: %w", err)
+	}
+
+	s.log.Info("generated_image_ready",
+		zap.String("local_path", filePath),
+		zap.String("public_url", s.baseURL+"/generated/"+filename),
+	)
+
+	// Validate file exists after writing
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		s.log.Error("generated_file_not_found_after_save",
+			zap.String("file_path", filePath),
+		)
+		return "", fmt.Errorf("generated file not found after save")
+	}
+
+	// Construct absolute URL
+	publicURL := s.baseURL + "/generated/" + filename
+
+	s.log.Info("image_saved_locally",
+		zap.String("file_path", filePath),
+		zap.Int("size_bytes", len(imgData)),
+		zap.String("public_url", publicURL),
+	)
+
+	return publicURL, nil
 }
 
 func (s *AIImageService) downloadAndUploadToOSS(ctx context.Context, imageURL string) (string, error) {

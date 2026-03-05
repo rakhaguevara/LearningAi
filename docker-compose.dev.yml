@@ -90,6 +90,7 @@ services:
       - ./backend:/app
       - go_modules:/go/pkg/mod
       - go_build_cache:/root/.cache/go-build
+      - generated_images:/tmp/ailearn/generated-images
     depends_on:
       postgres:
         condition: service_healthy
@@ -120,3 +121,4 @@ volumes:
   redis_data:
   go_modules:
   go_build_cache:
+  generated_images:
