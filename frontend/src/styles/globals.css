@@ -31,6 +31,31 @@
   --color-text-secondary: var(--text-secondary);
 }
 
+/* Dark mode explicit class */
+html.dark {
+  --bg-base:        #07000f;
+  --bg-surface:     #0e0818;
+  --bg-elevated:    #160d24;
+  --bg-overlay:     rgba(255,255,255,0.04);
+  --bg-hover:       rgba(255,255,255,0.07);
+
+  --border:         rgba(255,255,255,0.08);
+  --border-strong:  rgba(255,255,255,0.14);
+
+  --text-primary:   #f0eeff;
+  --text-secondary: #a89fc0;
+  --text-muted:     #5e5478;
+
+  --brand:          #7c3aed;
+  --brand-soft:     rgba(124, 58, 237, 0.18);
+  --brand-glow:     rgba(124, 58, 237, 0.35);
+
+  --color-bg-primary: var(--bg-base);
+  --color-bg-secondary: var(--bg-surface);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+}
+
 /* Light mode */
 html.light {
   --bg-base:        #f4f2ff;

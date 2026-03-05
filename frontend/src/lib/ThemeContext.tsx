@@ -24,8 +24,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             applyTheme(saved);
             setTheme(saved);
         } else {
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const initial: Theme = prefersDark ? 'dark' : 'light';
+            // Default to dark mode if no preference is set
+            const initial: Theme = 'dark';
             applyTheme(initial);
             setTheme(initial);
         }
@@ -34,8 +34,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     function applyTheme(t: Theme) {
         if (t === 'light') {
             document.documentElement.classList.add('light');
+            document.documentElement.classList.remove('dark');
         } else {
             document.documentElement.classList.remove('light');
+            document.documentElement.classList.add('dark');
         }
     }
 
