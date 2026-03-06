@@ -139,7 +139,7 @@ export function LearnersCarouselSection() {
             transition={{ delay: 0.2 }}
             className="mt-4 text-brand-200/70 max-w-2xl mx-auto text-lg"
           >
-            Whether you&apos;re studying, working, building, or creating — NeuraLearn adapts to your learning style.
+            Whether you&apos;re studying, working, building, or creating — Learny adapts to your learning style.
           </motion.p>
         </div>
 

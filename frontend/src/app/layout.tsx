@@ -4,7 +4,7 @@ import { LanguageProvider } from "@/lib/LanguageContext";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "NeuraLearn AI — Learn Any Subject Through What You Love",
+  title: "Learny AI — Learn Any Subject Through What You Love",
   description:
     "AI-powered learning platform that personalizes teaching using your interests. Anime fan? Sports enthusiast? Gamer? We adapt every explanation to your world.",
   keywords: [

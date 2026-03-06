@@ -115,7 +115,7 @@ export function DemoSection() {
                   <span className="text-white text-xs font-bold">N</span>
                 </div>
                 <span className="text-sm font-medium text-brand-200">
-                  NeuraLearn AI
+                  Learny AI
                 </span>
               </div>
               <p className="text-brand-200/90 leading-relaxed text-sm md:text-base">

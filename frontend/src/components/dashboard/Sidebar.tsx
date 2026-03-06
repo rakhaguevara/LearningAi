@@ -124,7 +124,7 @@ export function Sidebar({ active, onChange }: SidebarProps) {
                         </svg>
                     </div>
                     <div>
-                        <span className="text-sm font-bold text-[var(--text-primary)]">NeuraLearn</span>
+                        <span className="text-sm font-bold text-[var(--text-primary)]">Learny</span>
                         <div className="text-[10px] text-[var(--text-muted)] font-medium tracking-wider uppercase">AI</div>
                     </div>
                 </div>

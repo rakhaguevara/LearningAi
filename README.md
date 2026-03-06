@@ -1,4 +1,4 @@
-# Adaptive AI Learning Platform — NeuraLearn
+# Adaptive AI Learning Platform — Learny
 
 AI-powered learning platform that personalizes teaching based on user interests.
 Built with Next.js 14, Golang (Gin), PostgreSQL, Redis, and Alibaba Cloud Qwen LLM.

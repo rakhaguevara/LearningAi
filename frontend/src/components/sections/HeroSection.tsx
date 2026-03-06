@@ -72,7 +72,7 @@ export function HeroSection() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mt-6 text-lg md:text-xl text-brand-200/80 max-w-2xl mx-auto leading-relaxed"
         >
-          NeuraLearn transforms complex knowledge into adaptive learning experiences.
+          Learny transforms complex knowledge into adaptive learning experiences.
           intelligently tailored to how you process, understand, and remember.
         </motion.p>
 

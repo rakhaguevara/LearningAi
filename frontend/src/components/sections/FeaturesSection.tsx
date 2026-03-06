@@ -105,7 +105,7 @@ export function FeaturesSection() {
           viewport={{ once: true }}
           className="text-accent-cyan text-sm font-semibold uppercase tracking-widest mb-4"
         >
-          Why NeuraLearn?
+          Why Learny?
         </motion.p>
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
