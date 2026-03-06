@@ -593,7 +593,13 @@ export function LearnNowView() {
     // ─────────────────────────────────────────────────────────────────────────
 
     return (
-        <div className="flex h-full overflow-hidden flex-col md:flex-row relative">
+        <div className="flex h-full overflow-hidden flex-col md:flex-row relative bg-mesh-gradient">
+            {/* Background Orbs - Matching landing page theme */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-[-10%] left-[-5%] w-96 h-96 rounded-full bg-violet-600/20 blur-3xl animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-5%] w-96 h-96 rounded-full bg-fuchsia-600/20 blur-3xl animate-pulse" style={{ animationDelay: '1.5s' }} />
+                <div className="absolute top-[20%] right-[10%] w-64 h-64 rounded-full bg-cyan-600/15 blur-3xl animate-pulse" style={{ animationDelay: '3s' }} />
+            </div>
             {/* Mobile toggle buttons */}
             <div className="md:hidden absolute top-3 left-3 z-30 flex gap-2">
                 <button

@@ -31,7 +31,13 @@ export function DashboardLayout() {
     const ActiveView = PAGE_VIEWS[page];
 
     return (
-        <div className="flex h-screen overflow-hidden bg-[var(--bg-base)]">
+        <div className="flex h-screen overflow-hidden bg-[var(--bg-base)] relative">
+            {/* Background Orbs - Matching landing page theme */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-[-10%] left-[-5%] w-96 h-96 rounded-full bg-violet-600/20 blur-3xl animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-5%] w-96 h-96 rounded-full bg-fuchsia-600/20 blur-3xl animate-pulse" style={{ animationDelay: '1.5s' }} />
+                <div className="absolute top-[20%] right-[10%] w-64 h-64 rounded-full bg-cyan-600/15 blur-3xl animate-pulse" style={{ animationDelay: '3s' }} />
+            </div>
             {/* Desktop Sidebar */}
             <div className="hidden md:block">
                 <Sidebar active={page} onChange={setPage} />
