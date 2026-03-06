@@ -15,7 +15,7 @@ interface SidebarProps {
 const NAV_ITEMS: { id: DashboardPage; label: string; icon: React.ReactNode }[] = [
     {
         id: 'learn',
-        label: 'LearnNow',
+        label: 'Learn',
         icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
@@ -25,7 +25,7 @@ const NAV_ITEMS: { id: DashboardPage; label: string; icon: React.ReactNode }[] =
     },
     {
         id: 'archive',
-        label: 'Arsip Dokumen',
+        label: 'Archive Docs',
         icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
@@ -35,7 +35,7 @@ const NAV_ITEMS: { id: DashboardPage; label: string; icon: React.ReactNode }[] =
     },
     {
         id: 'pomodoro',
-        label: 'Podomoro Time',
+        label: 'Pomodoro Time',
         icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}

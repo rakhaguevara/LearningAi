@@ -6,9 +6,9 @@ import { useTheme } from '@/lib/ThemeContext';
 import type { DashboardPage } from './Sidebar';
 
 const PAGE_TITLES: Record<DashboardPage, string> = {
-    learn: 'LearnNow',
-    archive: 'Arsip Dokumen',
-    pomodoro: 'Podomoro Time',
+    learn: 'Learn',
+    archive: 'Archive Docs',
+    pomodoro: 'Pomodoro Time',
     settings: 'Settings',
     profile: 'My Profile',
 };
