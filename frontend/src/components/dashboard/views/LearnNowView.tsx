@@ -460,6 +460,8 @@ export function LearnNowView() {
     const [dragOver, setDragOver] = useState(false);
     const [translationLang, setTranslationLang] = useState('Indonesian');
     const [showLangInput, setShowLangInput] = useState(false);
+    const [mobileSourcesOpen, setMobileSourcesOpen] = useState(false);
+    const [mobileOutputFormatOpen, setMobileOutputFormatOpen] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -591,7 +593,166 @@ export function LearnNowView() {
     // ─────────────────────────────────────────────────────────────────────────
 
     return (
-        <div className="flex h-full overflow-hidden flex-col md:flex-row">
+        <div className="flex h-full overflow-hidden flex-col md:flex-row relative">
+            {/* Mobile toggle buttons */}
+            <div className="md:hidden absolute top-3 left-3 z-30 flex gap-2">
+                <button
+                    onClick={() => setMobileSourcesOpen(true)}
+                    className="p-2 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-violet-400 hover:border-violet-500/50 transition-all shadow-lg"
+                    title="Show Sources"
+                    id="mobile-sources-toggle"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </button>
+            </div>
+
+            <div className="md:hidden absolute top-3 right-3 z-30">
+                <button
+                    onClick={() => setMobileOutputFormatOpen(true)}
+                    className="p-2 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-violet-400 hover:border-violet-500/50 transition-all shadow-lg"
+                    title="Show Output Format"
+                    id="mobile-format-toggle"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                    </svg>
+                </button>
+            </div>
+
+            {/* Mobile Sources Drawer Overlay */}
+            {mobileSourcesOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                    onClick={() => setMobileSourcesOpen(false)}
+                />
+            )}
+
+            {/* Mobile Sources Drawer */}
+            <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 md:hidden ${mobileSourcesOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="w-72 h-full bg-[var(--bg-base)] border-r border-[var(--border)] flex flex-col">
+                    <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
+                        <h3 className="text-sm font-semibold tracking-widest uppercase text-[var(--text-muted)]">Sources</h3>
+                        <button
+                            onClick={() => setMobileSourcesOpen(false)}
+                            className="p-1 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+                        >
+                            <svg className="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4">
+                        {/* Drop zone */}
+                        <motion.div
+                            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                            onDragLeave={() => setDragOver(false)}
+                            onDrop={handleDrop}
+                            animate={{ borderColor: dragOver ? 'rgba(124,58,237,0.7)' : 'rgba(124,58,237,0.2)' }}
+                            className="relative w-full py-4 px-2 rounded-xl border-2 border-dashed border-violet-500/20 text-center cursor-pointer hover:border-violet-500/50 transition-all mb-4"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            {isUploading ? (
+                                <div className="flex flex-col items-center gap-1">
+                                    <motion.div
+                                        animate={{ rotate: 360 }}
+                                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                                        className="w-5 h-5 rounded-full border-2 border-violet-500 border-t-transparent"
+                                    />
+                                    <span className="text-[10px] text-violet-400">Indexing…</span>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center gap-1">
+                                    <svg className="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <span className="text-[10px] text-[var(--text-muted)]">PDF · DOCX · TXT · Image</span>
+                                    <span className="text-[10px] text-violet-400 font-medium">Click or drop</span>
+                                </div>
+                            )}
+                        </motion.div>
+
+                        {/* Source list */}
+                        <div className="space-y-2">
+                            {sources.length === 0 ? (
+                                <p className="text-[11px] text-[var(--text-muted)] text-center py-4">
+                                    No sources yet. Upload a document to start RAG-augmented learning.
+                                </p>
+                            ) : (
+                                sources.map((src) => (
+                                    <SourceCard key={src} name={src} />
+                                ))
+                            )}
+                        </div>
+
+                        {/* RAG Status */}
+                        {sources.length > 0 && (
+                            <div className="mt-4 p-3 rounded-xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                    <span className="text-[10px] font-semibold tracking-widest uppercase text-emerald-400">RAG Active</span>
+                                </div>
+                                <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+                                    {sources.length} source{sources.length > 1 ? 's' : ''} loaded. AI will prioritise your uploaded context.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Mobile Output Format Drawer Overlay */}
+            {mobileOutputFormatOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                    onClick={() => setMobileOutputFormatOpen(false)}
+                />
+            )}
+
+            {/* Mobile Output Format Drawer */}
+            <div className={`fixed inset-y-0 right-0 z-50 transform transition-transform duration-300 md:hidden ${mobileOutputFormatOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="w-72 h-full bg-[var(--bg-base)] border-l border-[var(--border)] flex flex-col">
+                    <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+                            <h3 className="text-sm font-semibold tracking-widest uppercase text-[var(--text-muted)]">Output Format</h3>
+                        </div>
+                        <button
+                            onClick={() => setMobileOutputFormatOpen(false)}
+                            className="p-1 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+                        >
+                            <svg className="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4">
+                        <OutputFormatPicker
+                            selected={selectedFormat}
+                            onSelect={(f) => {
+                                setSelectedFormat(prev => prev === f ? null : f);
+                                if (f === 'translation') setShowLangInput(true);
+                            }}
+                        />
+                    </div>
+                    {/* AI Badge */}
+                    <div className="p-4 border-t border-[var(--border)]">
+                        <div className="p-3 rounded-xl relative overflow-hidden" style={{
+                            background: 'linear-gradient(135deg, rgba(124,58,237,0.12), rgba(236,72,153,0.08))',
+                            border: '1px solid rgba(124,58,237,0.25)',
+                        }}>
+                            <p className="text-[10px] font-semibold uppercase tracking-widest text-violet-400 mb-1">AI Engine</p>
+                            <p className="text-xs font-bold text-[var(--text-primary)]">Qwen Max</p>
+                            <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Alibaba DashScope</p>
+                            <div className="flex items-center gap-1.5 mt-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                <span className="text-[10px] text-emerald-400">Connected</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {/* ── LEFT PANEL: Sources ──────────────────────────────────────────────── */}
             <div className="hidden md:flex w-60 flex-shrink-0 border-r border-[var(--border)] flex-col">
