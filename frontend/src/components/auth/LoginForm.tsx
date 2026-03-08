@@ -1,121 +1,111 @@
 'use client';
 
-import { useState } from 'react';
-import GoogleLoginButton from './GoogleLoginButton';
-import { storeAuthToken } from '@/lib/auth';
-import { siteConfig } from '@/lib/constants';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { GoogleLogin } from "@react-oauth/google";
 
-interface LoginFormProps {
-    onSuccess: () => void;
-}
+type Props = {
+  onSuccess?: () => void;
+};
 
-export default function LoginForm({ onSuccess }: LoginFormProps) {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+export default function LoginForm({ onSuccess }: Props) {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError('');
+  // LOGIN EMAIL & PASSWORD
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
-        try {
-            const res = await fetch(`${siteConfig.api}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ email, password }),
-            });
+    try {
+      const res = await fetch("http://localhost:8080/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
 
-            const data = await res.json();
+      const data = await res.json();
 
-            if (!res.ok) {
-                const errMsg =
-                    data?.error?.detail
-                    || data?.error?.message
-                    || (typeof data?.error === 'string' ? data.error : null)
-                    || data?.message
-                    || 'Login failed. Please check your credentials.';
-                throw new Error(errMsg);
-            }
+      if (!res.ok) throw new Error(data.message || "Login gagal");
 
-            // Store token safely (guards against 'null'/'undefined' strings)
-            storeAuthToken(data?.data?.access_token);
+      localStorage.setItem("token", data.token);
+      onSuccess?.();
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message);
+    }
 
-            onSuccess();
-            // Redirect: missing profile_completed also means onboarding required
-            const profileCompleted = data?.data?.user?.profile_completed;
-            if (profileCompleted) {
-                window.location.href = '/dashboard';
-            } else {
-                window.location.href = '/onboarding';
-            }
-        } catch (err: any) {
-            if (err instanceof TypeError && err.message === 'Failed to fetch') {
-                setError('Cannot connect to server. Please check if the backend is running.');
-            } else {
-                setError(err?.message || 'Something went wrong. Please try again.');
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    setLoading(false);
+  };
 
-    return (
-        <div className="space-y-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
-                {error && (
-                    <div className="p-3 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg">
-                        {error}
-                    </div>
-                )}
+  // LOGIN GOOGLE
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    try {
+      const res = await fetch("http://localhost:8080/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: credentialResponse.credential })
+      });
 
-                <div>
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Email address"
-                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-                        required
-                    />
-                </div>
+      const data = await res.json();
+      if (!res.ok) throw new Error("Google login gagal");
 
-                <div>
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Password"
-                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-                        required
-                    />
-                </div>
+      localStorage.setItem("token", data.token);
+      router.push("/dashboard");
+    } catch (err) {
+      console.error(err);
+      setError("Google login gagal");
+    }
+  };
 
-                <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-medium rounded-xl transition-all flex justify-center items-center disabled:opacity-70"
-                >
-                    {isLoading ? (
-                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    ) : (
-                        'Sign In'
-                    )}
-                </button>
-            </form>
+  return (
+    <div className="w-full max-w-md p-6 bg-gray-900 rounded-xl shadow-md">
+      {/* Form Email & Password */}
+      <form onSubmit={handleLogin} className="space-y-4">
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white outline-none"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white outline-none"
+          required
+        />
+        {error && <p className="text-red-400 text-sm">{error}</p>}
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold hover:opacity-90 transition"
+        >
+          {loading ? "Signing in..." : "Sign In"}
+        </button>
+      </form>
 
-            <div className="relative flex items-center py-2">
-                <div className="flex-grow border-t border-white/10"></div>
-                <span className="flex-shrink-0 mx-4 text-white/40 text-sm">or connect with</span>
-                <div className="flex-grow border-t border-white/10"></div>
-            </div>
+      {/* Divider */}
+      <div className="flex items-center gap-4 my-6">
+        <div className="flex-1 h-px bg-gray-700"></div>
+        <span className="text-xs text-gray-400">OR</span>
+        <div className="flex-1 h-px bg-gray-700"></div>
+      </div>
 
-            <GoogleLoginButton label="Continue with Google" />
-        </div>
-    );
+      {/* Google Login */}
+      <div className="flex justify-center">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={() => setError("Google login gagal")}
+        />
+      </div>
+    </div>
+  );
 }
