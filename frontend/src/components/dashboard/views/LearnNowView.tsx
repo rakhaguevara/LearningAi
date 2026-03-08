@@ -162,14 +162,14 @@ function StructuredAnswer({ msg }: { msg: Message }) {
 // Illustration with fade-in and zoom-on-hover
 function IllustrationImage({ url }: { url: string }) {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-    
+
     // Determine the correct image URL:
     // 1. If URL is already absolute and points to our backend, use it directly
     // 2. If URL is relative (starts with /), prepend apiBase
     // 3. If URL is absolute but external, use proxy to avoid CORS
     let imageUrl: string;
-    if (url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) {
-        // Local backend URL - use directly (no proxy needed)
+    if (url.startsWith(apiBase)) {
+        // Internal backend URL - use directly
         imageUrl = url;
     } else if (url.startsWith('/')) {
         // Relative URL - make absolute
@@ -629,7 +629,7 @@ export function LearnNowView() {
 
             {/* Mobile Sources Drawer Overlay */}
             {mobileSourcesOpen && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black/50 z-40 md:hidden"
                     onClick={() => setMobileSourcesOpen(false)}
                 />
@@ -710,7 +710,7 @@ export function LearnNowView() {
 
             {/* Mobile Output Format Drawer Overlay */}
             {mobileOutputFormatOpen && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black/50 z-40 md:hidden"
                     onClick={() => setMobileOutputFormatOpen(false)}
                 />
