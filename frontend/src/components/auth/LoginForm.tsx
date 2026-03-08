@@ -56,21 +56,50 @@ export default function LoginForm({ onSuccess }: Props) {
     };
 
     const handleGoogleSuccess = async (credentialResponse: any) => {
+        setError(""); // Reset error message
+        setLoading(true); // Tampilkan status loading
+
         try {
-            const res = await fetch(`${siteConfig.api}/auth/google`, {
+            // 1. Mengirim token ke backend API Route Next.js via fetch POST
+            const res = await fetch(`/api/auth/google`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ token: credentialResponse.credential })
             });
 
+            // 2. Parse hasil JSON dari API Route
             const data = await res.json();
-            if (!res.ok) throw new Error("Google login gagal");
+            
+            // 3. Tangani jika status bukan 2xx (termasuk 401 Unauthorized)
+            if (!res.ok) {
+                throw new Error(data.error || "Google login gagal di verifikasi server");
+            }
 
-            localStorage.setItem("token", data.token || data?.data?.access_token);
-            router.push("/dashboard");
-        } catch (err) {
-            console.error(err);
-            setError("Google login gagal");
+            // 4. Pastikan token tersedia
+            const tokenToStore = data.token || data?.data?.access_token;
+            if (!tokenToStore) {
+                 throw new Error("Sistem tidak mengembalikan token autentikasi.");
+            }
+
+            // 5. Simpan token ke localStorage (atau cookie)
+            localStorage.setItem("token", tokenToStore);
+            storeAuthToken(tokenToStore); // Fungsi utilitas dari codebase
+            
+            console.log("Login Berhasil!", data.user);
+            
+            // 6. Jalankan callback dan Pindahkan User ke /dashboard
+            onSuccess?.();
+            
+            // Menggunakan window.location.href untuk memastikan force reload 
+            // sehingga state Auth di root layout membaca localStorage yang baru
+            window.location.href = '/dashboard';
+            
+        } catch (err: any) {
+            console.error("Error verifikasi login:", err);
+            // Menampilkan error message ke layar pengguna
+            setError(err.message || "Terjadi kesalahan saat verifikasi Google Token.");
+        } finally {
+            setLoading(false);
         }
     };
 
