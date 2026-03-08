@@ -40,12 +40,13 @@ export default function LoginForm({ onSuccess }: Props) {
 
             if (!res.ok) throw new Error(data.message || (isLogin ? "Login gagal" : "Register gagal"));
 
+            const validToken = data.token || data?.data?.access_token;
             if (isLogin) {
-                localStorage.setItem("token", data.token || data?.data?.access_token);
+                storeAuthToken(validToken);
                 onSuccess?.();
-                router.push("/dashboard");
+                window.location.href = '/dashboard';
             } else {
-                storeAuthToken(data?.data?.access_token || data.token);
+                storeAuthToken(validToken);
                 window.location.href = '/onboarding';
             }
         } catch (err: any) {
@@ -60,8 +61,8 @@ export default function LoginForm({ onSuccess }: Props) {
         setLoading(true); // Tampilkan status loading
 
         try {
-            // 1. Mengirim token ke backend API Route Next.js via fetch POST
-            const res = await fetch(`/api/auth/google`, {
+            // 1. Mengirim token ke backend GoLang API Route
+            const res = await fetch(`${siteConfig.api}/auth/google`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ token: credentialResponse.credential })
@@ -72,20 +73,19 @@ export default function LoginForm({ onSuccess }: Props) {
             
             // 3. Tangani jika status bukan 2xx (termasuk 401 Unauthorized)
             if (!res.ok) {
-                throw new Error(data.error || "Google login gagal di verifikasi server");
+                throw new Error(data.message || data.error || "Google login gagal di verifikasi server");
             }
 
-            // 4. Pastikan token tersedia
+            // 4. Pastikan token tersedia (Go backend mengembalikan data.data.access_token)
             const tokenToStore = data.token || data?.data?.access_token;
             if (!tokenToStore) {
                  throw new Error("Sistem tidak mengembalikan token autentikasi.");
             }
 
-            // 5. Simpan token ke localStorage (atau cookie)
-            localStorage.setItem("token", tokenToStore);
+            // 5. Simpan token ke localStorage (atau cookie) via utility
             storeAuthToken(tokenToStore); // Fungsi utilitas dari codebase
             
-            console.log("Login Berhasil!", data.user);
+            console.log("Login Berhasil!", data.user || data.data);
             
             // 6. Jalankan callback dan Pindahkan User ke /dashboard
             onSuccess?.();
