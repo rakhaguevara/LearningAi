@@ -81,61 +81,97 @@ export default function LoginForm({ onSuccess }: Props) {
     };
 
     return (
-        <div className="w-full max-w-md p-6 bg-gray-900 rounded-xl shadow-md">
+        <div className="w-full max-w-md glass glass-strong rounded-2xl p-8 backdrop-blur-2xl border border-white/10">
+            {/* Header */}
+            <div className="mb-8">
+                <h2 className="text-2xl font-bold text-white mb-2">
+                    {isLogin ? "Welcome Back" : "Join Learny"}
+                </h2>
+                <p className="text-sm text-white/60">
+                    {isLogin 
+                        ? "Sign in to continue your learning journey" 
+                        : "Start your personalized learning experience"}
+                </p>
+            </div>
+
             {/* Form Area */}
             <form onSubmit={handleSubmit} className="space-y-4">
                 {!isLogin && (
-                    <input
-                        type="text"
-                        placeholder="Full Name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white outline-none"
-                        required={!isLogin}
-                    />
+                    <div className="space-y-2">
+                        <label className="block text-xs font-medium text-white/70 px-1">Full Name</label>
+                        <input
+                            type="text"
+                            placeholder="John Doe"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 outline-none focus:border-accent-cyan/50 focus:ring-1 focus:ring-accent-cyan/20 transition-all"
+                            required={!isLogin}
+                        />
+                    </div>
                 )}
-                <input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white outline-none"
-                    required
-                />
-                <input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white outline-none"
-                    required
-                />
-                {error && <p className="text-red-400 text-sm">{error}</p>}
+                <div className="space-y-2">
+                    <label className="block text-xs font-medium text-white/70 px-1">Email Address</label>
+                    <input
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 outline-none focus:border-accent-cyan/50 focus:ring-1 focus:ring-accent-cyan/20 transition-all"
+                        required
+                    />
+                </div>
+                <div className="space-y-2">
+                    <label className="block text-xs font-medium text-white/70 px-1">Password</label>
+                    <input
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 outline-none focus:border-accent-cyan/50 focus:ring-1 focus:ring-accent-cyan/20 transition-all"
+                        required
+                    />
+                </div>
+                
+                {error && (
+                    <div className="flex gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                        <span className="text-red-400 text-sm">{error}</span>
+                    </div>
+                )}
+                
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold hover:opacity-90 transition"
+                    className="w-full py-3 rounded-lg bg-gradient-to-r from-brand-500 to-accent-cyan text-white font-semibold hover:shadow-lg hover:shadow-brand-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-6"
                 >
-                    {loading ? "Processing..." : (isLogin ? "Sign In" : "Register")}
+                    {loading ? (
+                        <span className="flex items-center justify-center gap-2">
+                            <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                            Processing...
+                        </span>
+                    ) : (isLogin ? "Sign In" : "Create Account")}
                 </button>
             </form>
 
             {/* Toggle Link */}
-            <div className="mt-4 text-center">
+            <div className="mt-6 text-center">
                 <button
                     type="button"
                     onClick={() => setIsLogin(!isLogin)}
-                    className="text-sm text-blue-400 hover:text-purple-400 transition-colors"
+                    className="text-sm text-white/60 hover:text-white transition-colors"
                 >
-                    {isLogin ? "Need an account? Sign up" : "Already have an account? Sign in"}
+                    {isLogin ? (
+                        <>Don't have an account? <span className="text-accent-cyan font-semibold">Sign up</span></>
+                    ) : (
+                        <>Already have an account? <span className="text-accent-cyan font-semibold">Sign in</span></>
+                    )}
                 </button>
             </div>
 
             {/* Divider */}
             <div className="flex items-center gap-4 my-6">
-                <div className="flex-1 h-px bg-gray-700"></div>
-                <span className="text-xs text-gray-400">OR</span>
-                <div className="flex-1 h-px bg-gray-700"></div>
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                <span className="text-xs text-white/40 font-medium">OR</span>
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
             </div>
 
             {/* Google Login */}
