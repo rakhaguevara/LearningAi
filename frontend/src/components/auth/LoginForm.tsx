@@ -42,9 +42,9 @@ export default function LoginForm({ onSuccess }: Props) {
 
             const validToken = data.token || data?.data?.access_token;
             if (isLogin) {
-                localStorage.setItem("token", data.token || data?.data?.access_token);
+                storeAuthToken(validToken);
                 onSuccess?.();
-                window.location.href = '/dashboard';
+                router.push("/dashboard");
             } else {
                 storeAuthToken(validToken);
                 window.location.href = '/onboarding';
@@ -72,7 +72,7 @@ export default function LoginForm({ onSuccess }: Props) {
             const data = await res.json();
             if (!res.ok) throw new Error("Google login gagal");
 
-            localStorage.setItem("token", data.token || data?.data?.access_token);
+            storeAuthToken(data.token || data?.data?.access_token);
             router.push("/dashboard");
         } catch (err) {
             console.error(err);
