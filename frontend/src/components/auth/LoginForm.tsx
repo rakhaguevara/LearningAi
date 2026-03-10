@@ -42,7 +42,7 @@ export default function LoginForm({ onSuccess }: Props) {
 
             const validToken = data.token || data?.data?.access_token;
             if (isLogin) {
-                storeAuthToken(validToken);
+                localStorage.setItem("token", data.token || data?.data?.access_token);
                 onSuccess?.();
                 window.location.href = '/dashboard';
             } else {
@@ -70,36 +70,13 @@ export default function LoginForm({ onSuccess }: Props) {
 
             // 2. Parse hasil JSON dari API Route
             const data = await res.json();
-            
-            // 3. Tangani jika status bukan 2xx (termasuk 401 Unauthorized)
-            if (!res.ok) {
-                throw new Error(data.message || data.error || "Google login gagal di verifikasi server");
-            }
+            if (!res.ok) throw new Error("Google login gagal");
 
-            // 4. Pastikan token tersedia (Go backend mengembalikan data.data.access_token)
-            const tokenToStore = data.token || data?.data?.access_token;
-            if (!tokenToStore) {
-                 throw new Error("Sistem tidak mengembalikan token autentikasi.");
-            }
-
-            // 5. Simpan token ke localStorage (atau cookie) via utility
-            storeAuthToken(tokenToStore); // Fungsi utilitas dari codebase
-            
-            console.log("Login Berhasil!", data.user || data.data);
-            
-            // 6. Jalankan callback dan Pindahkan User ke /dashboard
-            onSuccess?.();
-            
-            // Menggunakan window.location.href untuk memastikan force reload 
-            // sehingga state Auth di root layout membaca localStorage yang baru
-            window.location.href = '/dashboard';
-            
-        } catch (err: any) {
-            console.error("Error verifikasi login:", err);
-            // Menampilkan error message ke layar pengguna
-            setError(err.message || "Terjadi kesalahan saat verifikasi Google Token.");
-        } finally {
-            setLoading(false);
+            localStorage.setItem("token", data.token || data?.data?.access_token);
+            router.push("/dashboard");
+        } catch (err) {
+            console.error(err);
+            setError("Google login gagal");
         }
     };
 
